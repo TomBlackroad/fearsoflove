@@ -1,96 +1,91 @@
-/* General styles */
+/* style.css */
 body {
-    font-family: 'Verdana', sans-serif;
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(135deg, #f0f8ff, #add8e6);
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f0f0;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    box-sizing: border-box;
+    margin: 0;
 }
 
-/* Game container */
-.game-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+#game-container {
+    background-color: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
     width: 90%;
     max-width: 500px;
-    text-align: center;
-    padding: 20px;
 }
 
-/* Scenario card */
 .card {
-    width: 100%;
-    max-width: 450px;
-    background-color: #fff;
-    padding: 20px;
+    background-color: #e3f2fd; /* Light blue background for card */
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    animation: drawCard 0.8s ease forwards;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
+    transition: transform 0.3s;
 }
 
-/* Button container */
+.card:hover {
+    transform: scale(1.02); /* Slightly enlarge card on hover */
+}
+
+h2, h3 {
+    color: #333; /* Dark color for titles */
+}
+
+#scenario-text {
+    font-size: 18px;
+    margin: 10px 0;
+    text-align: center;
+}
+
+#questions {
+    margin-top: 20px;
+}
+
+#follow-up-list {
+    list-style: none;
+    padding: 0;
+}
+
+#follow-up-list li {
+    background-color: #bbdefb; /* Light blue for questions */
+    border-radius: 5px;
+    padding: 8px;
+    margin: 5px 0;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+
 .button-container {
-    width: 100%;
     display: flex;
-    justify-content: space-around;  /* Spaced buttons */
-    padding-bottom: 20px;
+    justify-content: space-between;
 }
 
-/* Buttons */
-.game-button {
-    padding: 12px 20px;
+button {
+    padding: 10px 15px;
     font-size: 16px;
-    color: #fff;
-    background-color: #4CAF50;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-    flex: 1;  /* Make buttons equally wide */
-    margin: 0 10px;  /* Space between buttons */
+    background-color: #1e88e5; /* Primary button color */
+    color: white;
+    transition: background-color 0.3s;
+    flex: 1;
+    margin: 0 5px;
 }
 
-.game-button:hover {
-    background-color: #45a049;
+button:hover {
+    background-color: #1565c0; /* Darker shade on hover */
 }
 
-/* Animations */
-@keyframes drawCard {
-    0% { transform: translateY(100%); opacity: 0; }
-    100% { transform: translateY(0); opacity: 1; }
-}
-
-/* Responsive Design */
 @media (max-width: 600px) {
-    .game-container {
-        width: 100%;
-        padding: 10px;
-    }
-
-    .card {
-        max-width: 100%;
-        padding: 15px;
-        font-size: 14px;
-    }
-
-    .game-button {
-        font-size: 14px;
-        padding: 10px;
-    }
-
     .button-container {
-        justify-content: center;
-        flex-wrap: wrap;
+        flex-direction: column;
     }
 
-    .game-button {
-        width: 45%;  /* Ensures two buttons fit per row */
-        margin: 5px;  /* Adds space between buttons */
+    button {
+        margin: 5px 0; /* Adjust button margin for mobile */
     }
 }
