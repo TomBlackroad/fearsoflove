@@ -144,43 +144,64 @@ const scenarios = [
     }
 ];
 
+// Game state
 let currentScenarioIndex = 0;
+let showingQuestions = false;
 
-// Function to update the scenario card
-function showScenario() {
-    const scenario = scenarios[currentScenarioIndex];
-    document.getElementById('scenario-text').textContent = scenario.scenario;
-
-    const followUpList = document.getElementById('follow-up-list');
-    followUpList.innerHTML = '';
-    scenario.followUpQuestions.forEach(question => {
-        const li = document.createElement('li');
-        li.textContent = question;
-        followUpList.appendChild(li);
-    });
-
-    // Show the question button and hide start button
-    document.getElementById('start-btn').classList.add('hidden');
-    document.getElementById('questions-btn').classList.remove('hidden');
-    document.getElementById('next-btn').classList.remove('hidden');
-}
-
-// Function to show follow-up questions
-function showQuestions() {
-    document.getElementById('questions').classList.remove('hidden');
-}
-
-// Function to move to the next scenario
-function nextScenario() {
-    currentScenarioIndex = (currentScenarioIndex + 1) % scenarios.length;
-    document.getElementById('questions').classList.add('hidden');
+// Function to show the start button at the beginning
+function startGame() {
+    document.getElementById("start-button").style.display = "none"; // Hide start button
     showScenario();
 }
 
-// Event listeners for buttons
-document.getElementById('start-btn').addEventListener('click', showScenario);
-document.getElementById('questions-btn').addEventListener('click', showQuestions);
-document.getElementById('next-btn').addEventListener('click', nextScenario);
+// Function to show the next scenario
+function showScenario() {
+    showingQuestions = false;
+    document.getElementById("scenario-text").textContent = scenarios[currentScenarioIndex].scenario;
+    document.getElementById("follow-up-text").textContent = ""; // Clear previous follow-up questions
+    updateButtons();
+}
 
-// Debugging tips: Check console logs in Chrome for any errors and handle them
-console.log("Script loaded successfully in Chrome.");
+// Function to show the follow-up questions
+function showQuestions() {
+    if (!showingQuestions) {
+        document.getElementById("follow-up-text").textContent = scenarios[currentScenarioIndex].followUpQuestions.join(" ");
+        showingQuestions = true;
+    }
+}
+
+// Update the visibility of buttons based on scenario index
+function updateButtons() {
+    const previousButton = document.getElementById("previous-button");
+    const nextButton = document.getElementById("next-button");
+    const questionsButton = document.getElementById("questions-button");
+
+    // Show "Questions" and "Next" after the first scenario
+    previousButton.style.display = currentScenarioIndex > 0 ? "inline-block" : "none"; // Show "Previous" only after the first scenario
+    nextButton.style.display = "inline-block"; // Always show "Next" unless it's the last scenario
+    questionsButton.style.display = "inline-block"; // Always show "Questions"
+}
+
+// Function to go to the next scenario
+function nextScenario() {
+    if (currentScenarioIndex < scenarios.length - 1) {
+        currentScenarioIndex++;
+        showScenario();
+    }
+}
+
+// Function to go to the previous scenario
+function previousScenario() {
+    if (currentScenarioIndex > 0) {
+        currentScenarioIndex--;
+        showScenario();
+    }
+}
+
+// HTML structure:
+document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById("start-button").addEventListener("click", startGame);
+    document.getElementById("next-button").addEventListener("click", nextScenario);
+    document.getElementById("previous-button").addEventListener("click", previousScenario);
+    document.getElementById("questions-button").addEventListener("click", showQuestions);
+});
