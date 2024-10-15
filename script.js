@@ -152,7 +152,6 @@ let showingQuestions = false;
 function startGame() {
     document.getElementById("start-button").style.display = "none"; // Hide start button
     showScenario();
-    updateButtons()
 }
 
 // Function to show the next scenario
