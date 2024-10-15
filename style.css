@@ -2,11 +2,13 @@
 body {
     font-family: 'Verdana', sans-serif;
     margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #f0f8ff, #add8e6);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background: linear-gradient(135deg, #f0f8ff, #add8e6);
+    box-sizing: border-box;
 }
 
 /* Game container */
@@ -14,14 +16,16 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
+    width: 90%;
     max-width: 500px;
     text-align: center;
+    padding: 20px;
 }
 
 /* Scenario card */
 .card {
-    width: 90%;
+    width: 100%;
+    max-width: 450px;
     background-color: #fff;
     padding: 20px;
     border-radius: 10px;
@@ -37,12 +41,10 @@ body {
 
 /* Button container at the bottom of the screen */
 .button-container {
-    position: fixed;
-    bottom: 20px;
     width: 100%;
     display: flex;
-    justify-content: center;
-    gap: 10px;
+    justify-content: space-evenly;
+    padding-bottom: 20px;
 }
 
 /* Buttons */
@@ -55,6 +57,7 @@ body {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    width: 30%;
 }
 
 .game-button:hover {
@@ -65,4 +68,29 @@ body {
 @keyframes drawCard {
     0% { transform: translateY(100%); opacity: 0; }
     100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .game-container {
+        width: 100%;
+        padding: 10px;
+    }
+
+    .card {
+        max-width: 100%;
+        padding: 15px;
+        font-size: 14px;
+    }
+
+    .game-button {
+        font-size: 14px;
+        padding: 10px;
+        width: 30%;
+    }
+
+    .button-container {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
