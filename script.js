@@ -144,42 +144,42 @@ const scenarios = [
     }
 ];
 
-// Game state
 let currentScenarioIndex = 0;
 let showingQuestions = false;
 
-// Function to show the start button at the beginning
+// Start game: hide the start button and show the scenario
 function startGame() {
     document.getElementById("start-button").style.display = "none"; // Hide start button
-    showScenario();
+    document.getElementById("next-button").style.display = "inline-block"; // Show Next button
+    document.getElementById("questions-button").style.display = "inline-block"; // Show Questions button
+    showScenario(); // Show the first scenario
 }
 
-// Function to show the next scenario
+// Function to display a scenario
 function showScenario() {
     showingQuestions = false;
     document.getElementById("scenario-text").textContent = scenarios[currentScenarioIndex].scenario;
-    document.getElementById("follow-up-text").textContent = ""; // Clear previous follow-up questions
-    updateButtons();
+    document.getElementById("follow-up-list").innerHTML = ""; // Clear follow-up questions
+    updateButtons(); // Update the visibility of buttons
 }
 
-// Function to show the follow-up questions
+// Function to display follow-up questions
 function showQuestions() {
     if (!showingQuestions) {
-        document.getElementById("follow-up-text").textContent = scenarios[currentScenarioIndex].followUpQuestions.join(" ");
+        const questionList = document.getElementById("follow-up-list");
+        scenarios[currentScenarioIndex].followUpQuestions.forEach(question => {
+            const li = document.createElement("li");
+            li.textContent = question;
+            questionList.appendChild(li);
+        });
         showingQuestions = true;
     }
 }
 
-// Update the visibility of buttons based on scenario index
+// Update buttons based on the current scenario index
 function updateButtons() {
-    const previousButton = document.getElementById("previous-button");
-    const nextButton = document.getElementById("next-button");
-    const questionsButton = document.getElementById("questions-button");
-
-    // Show "Questions" and "Next" after the first scenario
-    previousButton.style.display = currentScenarioIndex > 0 ? "inline-block" : "none"; // Show "Previous" only after the first scenario
-    nextButton.style.display = "inline-block"; // Always show "Next" unless it's the last scenario
-    questionsButton.style.display = "inline-block"; // Always show "Questions"
+    document.getElementById("previous-button").style.display = currentScenarioIndex > 0 ? "inline-block" : "none"; // Show Previous button only if we're not on the first scenario
+    document.getElementById("next-button").style.display = currentScenarioIndex < scenarios.length - 1 ? "inline-block" : "none"; // Hide Next button if on the last scenario
 }
 
 // Function to go to the next scenario
@@ -198,7 +198,7 @@ function previousScenario() {
     }
 }
 
-// HTML structure:
+// Add event listeners once the DOM is fully loaded
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("start-button").addEventListener("click", startGame);
     document.getElementById("next-button").addEventListener("click", nextScenario);
