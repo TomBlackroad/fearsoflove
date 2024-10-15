@@ -1,40 +1,53 @@
 /* General styles */
 body {
     font-family: 'Verdana', sans-serif;
+    margin: 0;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     background: linear-gradient(135deg, #f0f8ff, #add8e6);
-    margin: 0;
 }
 
 /* Game container */
 .game-container {
-    width: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
     max-width: 500px;
     text-align: center;
+}
+
+/* Scenario card */
+.card {
+    width: 90%;
     background-color: #fff;
     padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-    animation: fadeIn 1s ease;
-}
-
-/* Card elements */
-.card {
-    background-color: #f9f9f9;
-    border: 2px solid #e0e0e0;
     border-radius: 10px;
-    padding: 20px;
-    margin: 10px 0;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    animation: cardSlideIn 1s ease forwards;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    animation: drawCard 0.8s ease forwards;
+    margin-bottom: 20px;
 }
 
-/* Button styles */
+/* Hidden class to toggle visibility */
+.hidden {
+    display: none;
+}
+
+/* Button container at the bottom of the screen */
+.button-container {
+    position: fixed;
+    bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Buttons */
 .game-button {
-    padding: 10px 15px;
+    padding: 12px 20px;
     font-size: 16px;
     color: #fff;
     background-color: #4CAF50;
@@ -42,45 +55,14 @@ body {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin: 10px;
 }
 
 .game-button:hover {
     background-color: #45a049;
 }
 
-#restart-btn {
-    background-color: #ff6347;
-}
-
-#restart-btn:hover {
-    background-color: #ff4500;
-}
-
-/* Progress Tracker */
-.progress-tracker {
-    margin-top: 20px;
-    font-size: 16px;
-    font-weight: bold;
-}
-
-/* Follow-up list */
-#follow-up-list {
-    list-style-type: none;
-    padding-left: 0;
-}
-
-#follow-up-list li {
-    margin: 5px 0;
-}
-
 /* Animations */
-@keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-}
-
-@keyframes cardSlideIn {
-    0% { transform: translateY(20px); opacity: 0; }
+@keyframes drawCard {
+    0% { transform: translateY(100%); opacity: 0; }
     100% { transform: translateY(0); opacity: 1; }
 }
