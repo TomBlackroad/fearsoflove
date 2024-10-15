@@ -3,162 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scenario Card Game</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-
-        #game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 90%;
-            max-width: 600px;
-        }
-
-        #scenario-card {
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            margin-bottom: 20px;
-            width: 100%;
-            min-height: 150px;
-        }
-
-        #scenario-text, #follow-up-text {
-            margin: 10px 0;
-            font-size: 18px;
-        }
-
-        #button-container {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            background-color: #007BFF;
-            color: white;
-            flex: 1;
-            margin: 0 5px;
-            display: inline-block;
-        }
-
-        button:disabled {
-            background-color: #cccccc;
-        }
-
-        @media (max-width: 600px) {
-            #button-container {
-                flex-direction: column;
-            }
-
-            button {
-                margin: 5px 0;
-            }
-        }
-    </style>
+    <title>First Encounters Card Game</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
-        <div id="scenario-card">
-            <p id="scenario-text"></p>
-            <p id="follow-up-text"></p>
+        <!-- Card for scenarios -->
+        <div id="scenario-card" class="card">
+            <h2 id="scenario-title">Scenario:</h2>
+            <p id="scenario-text">Press "Start" to draw a card.</p>
+            <div id="questions" class="hidden">
+                <h3>Follow-up Questions:</h3>
+                <ul id="follow-up-list"></ul>
+            </div>
         </div>
-        <div id="button-container">
-            <button id="start-button">Start</button>
-            <button id="previous-button" style="display: none;">Previous</button>
-            <button id="questions-button" style="display: none;">Questions</button>
-            <button id="next-button" style="display: none;">Next</button>
+
+        <!-- Button container at the bottom -->
+        <div id="button-container" class="button-container">
+            <button class="game-button" id="start-button">Start</button>
+            <button class="game-button" id="previous-button" style="display: none;">Previous</button>
+            <button class="game-button" id="questions-button" style="display: none;">Questions</button>
+            <button class="game-button" id="next-button" style="display: none;">Next</button>
         </div>
     </div>
 
-    <script>
-        // Array of scenarios with follow-up questions
-        const scenarios = [
-            {
-                scenario: "You meet at a mutual friend's wedding after chatting online for months.",
-                followUpQuestions: ["How do you feel seeing her in person?", "What's the first thing you talk about?"]
-            },
-            // Add the rest of your scenarios here...
-        ];
-
-        // Game state
-        let currentScenarioIndex = 0;
-        let showingQuestions = false;
-
-        // Function to show the start button at the beginning
-        function startGame() {
-            document.getElementById("start-button").style.display = "none"; // Hide start button
-            showScenario();
-        }
-
-        // Function to show the next scenario
-        function showScenario() {
-            showingQuestions = false;
-            document.getElementById("scenario-text").textContent = scenarios[currentScenarioIndex].scenario;
-            document.getElementById("follow-up-text").textContent = ""; // Clear previous follow-up questions
-            updateButtons();
-        }
-
-        // Function to show the follow-up questions
-        function showQuestions() {
-            if (!showingQuestions) {
-                document.getElementById("follow-up-text").textContent = scenarios[currentScenarioIndex].followUpQuestions.join(" ");
-                showingQuestions = true;
-            }
-        }
-
-        // Update the visibility of buttons based on scenario index
-        function updateButtons() {
-            const previousButton = document.getElementById("previous-button");
-            const nextButton = document.getElementById("next-button");
-            const questionsButton = document.getElementById("questions-button");
-
-            // Show "Questions" and "Next" after the first scenario
-            previousButton.style.display = currentScenarioIndex > 0 ? "inline-block" : "none"; // Show "Previous" only after the first scenario
-            nextButton.style.display = "inline-block"; // Always show "Next" unless it's the last scenario
-            questionsButton.style.display = "inline-block"; // Always show "Questions"
-        }
-
-        // Function to go to the next scenario
-        function nextScenario() {
-            if (currentScenarioIndex < scenarios.length - 1) {
-                currentScenarioIndex++;
-                showScenario();
-            }
-        }
-
-        // Function to go to the previous scenario
-        function previousScenario() {
-            if (currentScenarioIndex > 0) {
-                currentScenarioIndex--;
-                showScenario();
-            }
-        }
-
-        // HTML structure:
-        document.addEventListener("DOMContentLoaded", function() {
-            document.getElementById("start-button").addEventListener("click", startGame);
-            document.getElementById("next-button").addEventListener("click", nextScenario);
-            document.getElementById("previous-button").addEventListener("click", previousScenario);
-            document.getElementById("questions-button").addEventListener("click", showQuestions);
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
