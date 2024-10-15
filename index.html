@@ -7,28 +7,50 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="game-container">
         <h1>First Encounters</h1>
-        <div id="situation-container">
+
+        <!-- Situation Card -->
+        <div class="card" id="situation-container">
             <h2>Situation:</h2>
-            <p id="situation-text">Press start to draw a situation.</p>
+            <p id="situation-text">Press Start to draw a situation.</p>
         </div>
 
-        <div id="fear-container">
+        <!-- Fear Card -->
+        <div class="card" id="fear-container">
             <h2>Fear:</h2>
-            <p id="fear-text">Press start to draw a fear card.</p>
+            <p id="fear-text">Press Start to draw a fear card.</p>
         </div>
 
-        <div id="excitement-container">
+        <!-- Excitement Card -->
+        <div class="card" id="excitement-container">
             <h2>Excitement:</h2>
-            <p id="excitement-text">Press start to draw an excitement card.</p>
+            <p id="excitement-text">Press Start to draw an excitement card.</p>
         </div>
 
-        <button id="draw-cards-btn">Start the Game</button>
+        <!-- Buttons for interactions -->
+        <div class="button-container">
+            <button class="game-button" id="draw-cards-btn">Start the Game</button>
+            <button class="game-button" id="restart-btn">Restart</button>
+        </div>
 
+        <!-- Discussion Prompt -->
         <div id="discussion-prompt">
             <h3>Discussion Prompt:</h3>
             <p id="prompt-text">Reflect on how you'd handle these feelings.</p>
+        </div>
+
+        <!-- Follow-up Questions -->
+        <div id="follow-up-container">
+            <h3>Follow-up Questions:</h3>
+            <ul id="follow-up-list">
+                <!-- Questions will be dynamically added here -->
+            </ul>
+        </div>
+
+        <!-- Progress Tracker -->
+        <div class="progress-tracker">
+            <p id="progress-text">Rounds played: 0</p>
         </div>
     </div>
 
