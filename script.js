@@ -1,83 +1,50 @@
-// Predefined lists of cards with more context and follow-up questions
-const situations = [
+// Predefined list of scenarios with follow-up questions
+const scenarios = [
     {
-        situation: "You are meeting at the airport for the first time after weeks of texting.",
-        context: "You’ve been talking online for a while and now you’re finally meeting in person. There’s excitement, but also nervousness because you’ve only known each other through screens.",
-        followUpQuestions: [
-            "What are you most nervous about in this moment?",
-            "How do you think the first conversation will go in person?"
-        ]
+        scenario: "You meet for the first time at the airport after months of chatting online.",
+        followUpQuestions: ["How do you feel in this moment?", "What are you most excited or afraid of?"]
     },
-    // Add other situations here...
+    {
+        scenario: "You are having your first dinner date after arriving in her city.",
+        followUpQuestions: ["What do you want to learn about her?", "How do you break the ice?"]
+    },
+    // More scenarios...
 ];
 
-const fears = [
-    "Fear of rejection.",
-    "Fear of long-distance challenges.",
-    "Fear of not being compatible in person.",
-    "Fear of being judged.",
-    "Fear of cultural misunderstandings."
-];
+let currentScenarioIndex = 0;
 
-const excitements = [
-    "Excitement about discovering something new together.",
-    "Looking forward to meaningful conversations.",
-    "Excitement about learning more about their culture.",
-    "Anticipation of a strong emotional connection.",
-    "Excitement about future possibilities."
-];
+// Function to update the scenario card
+function showScenario() {
+    const scenario = scenarios[currentScenarioIndex];
+    document.getElementById('scenario-text').textContent = scenario.scenario;
 
-// Game progress
-let roundsPlayed = 0;
-
-// Function to shuffle and pick a random item from an array
-function drawRandomCard(cards) {
-    const randomIndex = Math.floor(Math.random() * cards.length);
-    return cards[randomIndex];
-}
-
-// Function to update the progress tracker
-function updateProgress() {
-    roundsPlayed++;
-    document.getElementById('progress-text').textContent = `Rounds played: ${roundsPlayed}`;
-}
-
-// Function to restart the game
-function restartGame() {
-    roundsPlayed = 0;
-    document.getElementById('situation-text').textContent = "Press Start to draw a situation.";
-    document.getElementById('fear-text').textContent = "Press Start to draw a fear card.";
-    document.getElementById('excitement-text').textContent = "Press Start to draw an excitement card.";
-    document.getElementById('prompt-text').textContent = "Reflect on how you'd handle these feelings.";
-    document.getElementById('follow-up-list').innerHTML = '';
-    updateProgress();
-}
-
-// Handling the draw cards button
-document.getElementById('draw-cards-btn').addEventListener('click', function () {
-    // Draw random situation, fear, and excitement
-    const randomSituation = drawRandomCard(situations);
-    const randomFear = drawRandomCard(fears);
-    const randomExcitement = drawRandomCard(excitements);
-
-    // Update the DOM with the new cards
-    document.getElementById('situation-text').textContent = `${randomSituation.situation} - ${randomSituation.context}`;
-    document.getElementById('fear-text').textContent = randomFear;
-    document.getElementById('excitement-text').textContent = randomExcitement;
-    document.getElementById('prompt-text').textContent = "How would you handle these emotions in this situation?";
-
-    // Clear and add follow-up questions
     const followUpList = document.getElementById('follow-up-list');
     followUpList.innerHTML = '';
-    randomSituation.followUpQuestions.forEach(question => {
-        const listItem = document.createElement('li');
-        listItem.textContent = question;
-        followUpList.appendChild(listItem);
+    scenario.followUpQuestions.forEach(question => {
+        const li = document.createElement('li');
+        li.textContent = question;
+        followUpList.appendChild(li);
     });
 
-    // Update progress
-    updateProgress();
-});
+    // Show the question button and hide start button
+    document.getElementById('start-btn').classList.add('hidden');
+    document.getElementById('questions-btn').classList.remove('hidden');
+    document.getElementById('next-btn').classList.remove('hidden');
+}
 
-// Handling the restart button
-document.getElementById('restart-btn').addEventListener('click', restartGame);
+// Function to show follow-up questions
+function showQuestions() {
+    document.getElementById('questions').classList.remove('hidden');
+}
+
+// Function to move to the next scenario
+function nextScenario() {
+    currentScenarioIndex = (currentScenarioIndex + 1) % scenarios.length;
+    document.getElementById('questions').classList.add('hidden');
+    showScenario();
+}
+
+// Event listeners for buttons
+document.getElementById('start-btn').addEventListener('click', showScenario);
+document.getElementById('questions-btn').addEventListener('click', showQuestions);
+document.getElementById('next-btn').addEventListener('click', nextScenario);
