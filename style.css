@@ -1,50 +1,86 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
+/* General styles */
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Verdana', sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background-color: #f0f0f0;
+    background: linear-gradient(135deg, #f0f8ff, #add8e6);
+    margin: 0;
 }
 
-.container {
+/* Game container */
+.game-container {
     width: 90%;
-    max-width: 400px;
+    max-width: 500px;
     text-align: center;
     background-color: #fff;
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 1s ease;
 }
 
-h1 {
-    font-size: 24px;
-    margin-bottom: 20px;
+/* Card elements */
+.card {
+    background-color: #f9f9f9;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    animation: cardSlideIn 1s ease forwards;
 }
 
-h2 {
-    font-size: 18px;
-    margin-top: 10px;
-}
-
-#draw-cards-btn {
-    padding: 10px 20px;
+/* Button styles */
+.game-button {
+    padding: 10px 15px;
     font-size: 16px;
-    margin-top: 20px;
+    color: #fff;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 5px;
     cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 10px;
 }
 
-#discussion-prompt {
-    margin-top: 30px;
+.game-button:hover {
+    background-color: #45a049;
+}
+
+#restart-btn {
+    background-color: #ff6347;
+}
+
+#restart-btn:hover {
+    background-color: #ff4500;
+}
+
+/* Progress Tracker */
+.progress-tracker {
+    margin-top: 20px;
     font-size: 16px;
+    font-weight: bold;
 }
 
-#prompt-text {
-    font-style: italic;
+/* Follow-up list */
+#follow-up-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#follow-up-list li {
+    margin: 5px 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes cardSlideIn {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
 }
