@@ -1,32 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>First Encounters Card Game</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fears of Love: a movie-scene game for two</title>
+  <meta name="description" content="Iconic movie and series moments, one question: what would you do? An ice-breaker game for two.">
+  <meta name="theme-color" content="#14090d">
+  <meta property="og:title" content="Fears of Love">
+  <meta property="og:description" content="Iconic movie and series moments, one question: what would you do?">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="game-container">
-        <!-- Card for scenarios -->
-        <div id="scenario-card" class="card">
-            <h2 id="scenario-title">Scenario:</h2>
-            <p id="scenario-text">Press "Start" to draw a card.</p>
-            <div id="questions" class="hidden">
-                <h3>Follow-up Questions:</h3>
-                <ul id="follow-up-list"></ul>
-            </div>
-        </div>
+  <main id="app">
 
-        <!-- Button container at the bottom -->
-        <div id="button-container" class="button-container">
-            <button class="game-button" id="start-button">Start</button>
-            <button class="game-button" id="previous-button" style="display: none;">Previous</button>
-            <button class="game-button" id="questions-button" style="display: none;">Questions</button>
-            <button class="game-button" id="next-button" style="display: none;">Next</button>
+    <section id="screen-play" class="screen is-active" aria-label="Game">
+      <header class="play-head">
+        <span id="progress" class="muted">Loading...</span>
+        <div class="seg" id="type-toggle" role="group" aria-label="Show">
+          <button type="button" data-type="all" aria-pressed="true">All</button>
+          <button type="button" data-type="movie" aria-pressed="false">Movies</button>
+          <button type="button" data-type="tv" aria-pressed="false">Series</button>
         </div>
-    </div>
+        <button class="icon-btn" id="btn-info" type="button" aria-label="About this game">i</button>
+      </header>
+      <p id="load-error" class="error" role="alert" hidden></p>
+      <article class="card" id="card" aria-live="polite" hidden>
+        <div class="card-head">
+          <div class="poster" id="poster"></div>
+          <div class="card-title">
+            <p class="card-meta" id="card-meta"></p>
+            <h3 id="card-title"></h3>
+            <p class="muted" id="card-sub"></p>
+            <a class="wiki" id="card-wiki" href="#" target="_blank" rel="noopener noreferrer">Wikipedia &#8599;</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="moment" id="moment"></p>
+          <blockquote class="line" id="line" hidden></blockquote>
+          <div class="reveal" id="prompt-box" hidden>
+            <p class="prompt" id="prompt"></p>
+          </div>
+          <ul class="followups" id="followups" hidden></ul>
+        </div>
+      </article>
+      <div class="controls" id="controls" hidden>
+        <div class="reveal-row">
+          <button class="btn btn-outline" id="btn-q" type="button">What would you do?</button>
+          <button class="btn btn-outline" id="btn-deep" type="button">Go deeper</button>
+        </div>
+        <div class="nav-row">
+          <button class="btn-arrow" id="btn-prev" type="button" aria-label="Previous card">&#8592;</button>
+          <button class="btn btn-primary" id="btn-next" type="button">Next card</button>
+        </div>
+      </div>
+    </section>
 
-    <script src="script.js"></script>
+    <section id="screen-end" class="screen" aria-labelledby="end-title">
+      <h2 id="end-title">That's the deck</h2>
+      <p class="lede" id="end-text"></p>
+      <div class="stack">
+        <button class="btn btn-primary" id="btn-again" type="button">Shuffle and play again</button>
+      </div>
+    </section>
+
+  </main>
+
+  <dialog id="about">
+    <h2>About</h2>
+    <p><strong>Fears of Love</strong> is a free ice-breaker game for two, built around moments from films and series.</p>
+    <p>Developed by <a href="https://github.com/TomBlackroad" target="_blank" rel="noopener noreferrer">TomBlackroad</a>. It is open source:
+      <a href="https://github.com/TomBlackroad/fearsoflove" target="_blank" rel="noopener noreferrer">see the code</a> or suggest a scene.</p>
+    <p class="small">Scene descriptions are written in our own words; titles and artwork belong to their owners. Posters are served by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+    <form method="dialog"><button class="btn btn-primary">Close</button></form>
+  </dialog>
+
+  <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,13 @@
+{
+  "name": "fearsoflove",
+  "version": "0.2.0",
+  "private": true,
+  "description": "An ice-breaker game for two, built on iconic movie and series moments.",
+  "license": "GPL-3.0",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "validate": "node tools/validate.mjs",
+    "posters": "node tools/fetch-posters.mjs"
+  }
+}
