@@ -14,8 +14,9 @@ const state = {
   index: 0,
   typeFilter: 'all', // all | movie | tv
   ratings: { a: {}, b: {} }, // movie id -> 1..10, one set per player (kept on this device only)
-  want: 3,     // shared: 1 = something different ... 5 = more like this
-  similar: null, providers: null, model: null, country: 'US',
+  want: 3,     // shared mood, three stops: 1 = not really (something different), 3 = maybe, 5 = more like this
+  solo: false, // one person playing: player one counts for both
+  similar: null, model: null,
   showDeep: false,
 };
 
@@ -69,14 +70,6 @@ function bookCover(book) {
   frame.append(t, orn, a);
   c.append(frame);
   return c;
-}
-
-function findBookLink(book) {
-  const a = document.createElement('a');
-  a.href = 'https://openlibrary.org/search?q=' + encodeURIComponent(book.title + ' ' + (book.author || ''));
-  a.target = '_blank'; a.rel = 'noopener noreferrer';
-  a.textContent = 'Find it (Open Library) ↗';
-  return a;
 }
 
 function hueFor(id) {
@@ -210,7 +203,7 @@ function endGame() {
 
 /* ---------- two players: feedback sliders + recommender (all on this device) ---------- */
 
-const WANT_LABELS = ['', 'something quite different', 'a little different', 'open to anything', 'something similar', 'more of exactly this'];
+const WANT_LABELS = ['', 'something different', '', 'open to anything', '', 'more of this'];
 
 function saveTaste() {
   store('set', 'fol-taste', JSON.stringify({ a: state.ratings.a, b: state.ratings.b, want: state.want }));
@@ -222,20 +215,33 @@ function loadTaste() {
     const old = t.ratings && typeof t.ratings === 'object' ? t.ratings : {}; // v1 had a single set of ratings
     state.ratings.a = t.a && typeof t.a === 'object' ? t.a : old;
     state.ratings.b = t.b && typeof t.b === 'object' ? t.b : {};
-    if (t.want >= 1 && t.want <= 5) state.want = t.want;
+    if (t.want >= 1 && t.want <= 5) state.want = t.want <= 2 ? 1 : t.want >= 4 ? 5 : 3;
+    state.solo = store('get', 'fol-solo') === '1';
   } catch (e) { /* ignore */ }
+}
+
+function paintFader(el) {
+  el.style.setProperty('--f', (el.value - el.min) / (el.max - el.min));
 }
 
 function renderFeedback(movie) {
   $('#feedback').hidden = false;
+  $('#feedback').classList.toggle('solo', state.solo);
+  document.querySelectorAll('#mode-toggle button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.mode === '1') === state.solo)));
+  $('#lab-a').textContent = state.solo ? 'You' : 'Player one';
   $('#fb-title').textContent = movie.title;
   ['a', 'b'].forEach((p) => {
     const el = $('#fb-like-' + p);
     const v = state.ratings[p][movie.id];
     el.value = v || 5;
     el.classList.toggle('untouched', !v);
+    $('#out-' + p).textContent = v ? v : '–';
+    paintFader(el);
   });
-  $('#fb-want').value = state.want;
+  const w = $('#fb-want');
+  w.value = (state.want + 1) / 2;
+  paintFader(w);
+  document.querySelectorAll('#want-notches span').forEach((n, i) => n.classList.toggle('on', i === Number(w.value) - 1));
 }
 
 function jaccard(a, b) {
@@ -254,6 +260,7 @@ function similarity(a, b) {
 }
 
 function currentLike(p, id) {
+  if (state.solo) p = 'a';
   const mine = state.ratings[p][id];
   if (mine) return mine;
   const other = state.ratings[p === 'a' ? 'b' : 'a'][id];
@@ -292,18 +299,18 @@ function recommend(cur) {
   const s = (state.want - 1) / 4;
   const I = cur.intensity || 3;
   const wantedI = s * I + (1 - s) * (6 - I);
-  const A = anchorsFor('a', cur), B = anchorsFor('b', cur);
+  const A = anchorsFor('a', cur), B = state.solo ? A : anchorsFor('b', cur);
   const rank = (items) => items.map((t) => {
     const pa = partnerScore(t, A, wantedI), pb = partnerScore(t, B, wantedI);
     return { t, anchor: pa.score >= pb.score ? pa.anchor : pb.anchor, moodFit: pa.moodFit, fit: Math.min(pa.score, pb.score), score: 0.5 * (pa.score + pb.score) / 2 + 0.5 * Math.min(pa.score, pb.score) };
   }).sort((x, y) => y.score - x.score);
   const ranked = rank(Array.from(state.movies.values()).filter((t) => t.id !== cur.id));
-  const inside = ranked.slice(0, 3);
-  // keep the mix interesting: at least one book and one film/series among the three
+  const inside = ranked.slice(0, 2);
+  // keep the mix interesting: at least one book and one film/series
   [(x) => x.t.type === 'book', (x) => x.t.type !== 'book'].forEach((isKind) => {
-    if (!inside.some(isKind)) { const alt = ranked.find(isKind); if (alt) inside[2] = alt; }
+    if (!inside.some(isKind)) { const alt = ranked.find(isKind); if (alt) inside[1] = alt; }
   });
-  const outside = rank(state.similar ? Object.values(state.similar.pool) : []).slice(0, 2);
+  const outside = rank(state.similar ? Object.values(state.similar.pool) : []).slice(0, 1);
   return { inside, outside };
 }
 
@@ -312,37 +319,7 @@ function sharedTags(a, b) {
   return (a.tags || []).filter((x) => B.has(x)).slice(0, 2);
 }
 
-/* ---------- where to watch ---------- */
-
-const COUNTRY_KEY = 'fol-country';
-
-function pickCountry(list) {
-  const saved = store('get', COUNTRY_KEY);
-  if (saved && list.includes(saved)) return saved;
-  const region = ((navigator.language || '').split('-')[1] || '').toUpperCase();
-  return list.includes(region) ? region : list.includes('US') ? 'US' : list[0];
-}
-
-function watchLine(key) {
-  const p = document.createElement('p');
-  p.className = 'rec-watch';
-  const data = state.providers && state.providers.by[key] && state.providers.by[key][state.country];
-  if (!state.providers) { p.textContent = 'Where to watch: not available right now.'; return p; }
-  if (!data) { p.textContent = 'Where to watch: not listed in ' + state.country + '.'; return p; }
-  const parts = [];
-  if (data.s.length) parts.push('Streaming: ' + data.s.slice(0, 3).join(', '));
-  else if (data.r.length || data.b.length) parts.push('Rent or buy: ' + (data.r.length ? data.r : data.b).slice(0, 2).join(', '));
-  else parts.push('No service listed in ' + state.country);
-  const [first, ...rest] = parts[0].split(': ');
-  p.append(Object.assign(document.createElement('b'), { textContent: first + ': ' }), rest.join(': '));
-  if (data.l) {
-    p.append(' · ');
-    const a = document.createElement('a');
-    a.href = data.l; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'all options ↗';
-    p.append(a);
-  }
-  return p;
-}
+/* ---------- suggestion cards (the cover opens the title's page) ---------- */
 
 function posterBox(title, hue, path, book) {
   if (book) { const w = document.createElement('div'); w.className = 'poster book'; w.append(bookCover(book)); return w; }
@@ -362,11 +339,24 @@ function posterBox(title, hue, path, book) {
   return poster;
 }
 
+function pageUrl(t, outside) {
+  if (outside) return 'https://www.themoviedb.org/' + t.type + '/' + t.tmdb;
+  if (t.type === 'book') return 'https://openlibrary.org/search?q=' + encodeURIComponent(t.title + ' ' + (t.author || ''));
+  const p = state.posters[t.id];
+  return p && p.tmdbId ? 'https://www.themoviedb.org/' + (t.type === 'tv' ? 'tv' : 'movie') + '/' + p.tmdbId : t.wikipedia;
+}
+
 function recItem(r, outside) {
   const t = r.t;
   const li = document.createElement('li');
   li.className = 'rec';
   const poster = outside ? posterBox(t.title, hueFor(t.key), t.poster) : posterBox(t.title, hueFor(t.id), state.posters[t.id] && state.posters[t.id].poster, t.type === 'book' ? t : null);
+  const cover = document.createElement('a');
+  cover.className = 'rec-cover';
+  cover.href = pageUrl(t, outside);
+  cover.target = '_blank'; cover.rel = 'noopener noreferrer';
+  cover.setAttribute('aria-label', 'Open the page for ' + t.title);
+  cover.append(poster);
 
   const body = document.createElement('div');
   body.className = 'rec-body';
@@ -379,35 +369,22 @@ function recItem(r, outside) {
   why.className = 'rec-why';
   const bits = [];
   if (r.anchor) { const sh = sharedTags(t, r.anchor); bits.push('Like ' + r.anchor.title + (sh.length ? ': ' + sh.join(', ') : '')); }
-  if (r.fit >= 0.45) bits.push('fits you both');
+  if (r.fit >= 0.45) bits.push(state.solo ? 'fits you' : 'fits you both');
   else if (r.moodFit >= 0.75) bits.push('fits your mood');
   why.textContent = bits.join(' · ');
+  body.append(h, sub, why);
 
-  const key = outside ? t.key : t.type === 'book' ? '' : (state.posters[t.id] ? (t.type === 'tv' ? 'tv:' : 'movie:') + state.posters[t.id].tmdbId : '');
-  const links = document.createElement('div');
-  links.className = 'rec-links';
-  if (outside) {
-    const a = document.createElement('a');
-    a.href = 'https://www.themoviedb.org/' + t.type + '/' + t.tmdb;
-    a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'TMDB ↗';
-    links.append(a);
-  } else {
+  if (!outside) {
+    const links = document.createElement('div');
+    links.className = 'rec-links';
     const play = document.createElement('button');
     play.type = 'button';
     play.textContent = 'Play its scenes';
     play.addEventListener('click', () => { $('#suggest').close(); playTitle(t.id); });
     links.append(play);
-    if (t.wikipedia) {
-      const a = document.createElement('a');
-      a.href = t.wikipedia; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Wikipedia ↗';
-      links.append(a);
-    }
+    body.append(links);
   }
-  body.append(h, sub, why);
-  if (key) body.append(watchLine(key));
-  else if (!outside && t.type === 'book') { const f = document.createElement('p'); f.className = 'rec-watch'; f.append(findBookLink(t)); body.append(f); }
-  body.append(links);
-  li.append(poster, body);
+  li.append(cover, body);
   return li;
 }
 
@@ -416,13 +393,13 @@ function renderRecs() {
   const cur = state.movies.get(scene.movie);
   const { inside, outside } = recommend(cur);
   const la = currentLike('a', cur.id), lb = currentLike('b', cur.id);
-  const both = Math.min(la, lb), gap = Math.abs(la - lb);
-  const disliked = both <= 4;
+  const gap = Math.abs(la - lb);
+  const disliked = Math.max(la, lb) <= 4;
   $('#suggest-title').textContent = disliked ? 'Something different' : 'Try these next';
   let why;
-  if (disliked) why = 'Neither of you loved ' + cur.title + '. ';
+  if (disliked) why = (state.solo ? 'Not your thing: ' : 'Neither of you loved ') + cur.title + '. ';
   else if (gap >= 4) why = 'You two felt differently about ' + cur.title + ', so these aim to fit you both. ';
-  else why = 'You both enjoyed ' + cur.title + '. ';
+  else why = (state.solo ? 'You enjoyed ' : 'You both enjoyed ') + cur.title + '. ';
   $('#suggest-why').textContent = why + 'Tonight: ' + WANT_LABELS[state.want] + '.';
   const list = $('#recs');
   list.textContent = '';
@@ -434,25 +411,10 @@ function renderRecs() {
 }
 
 async function openSuggestions() {
-  const sel = $('#country');
-  if (!state.providers && !state.providersTried) {
-    state.providersTried = true;
-    state.providers = await loadJSON('data/providers.json', true);
-  }
   if (!state.similar && !state.similarTried) {
     state.similarTried = true;
     state.similar = await loadJSON('data/similar.json', true);
   }
-  const countries = state.providers ? state.providers.countries : ['US'];
-  if (!sel.options.length) {
-    let names = null;
-    try { names = new Intl.DisplayNames([navigator.language || 'en'], { type: 'region' }); } catch (e) { /* ignore */ }
-    countries.forEach((c) => sel.append(new Option(names ? names.of(c) : c, c)));
-    state.country = pickCountry(countries);
-    sel.value = state.country;
-    sel.addEventListener('change', () => { state.country = sel.value; store('set', COUNTRY_KEY, state.country); renderRecs(); });
-  }
-  $('#suggest-foot').hidden = false;
   renderRecs();
   $('#suggest').showModal();
 }
@@ -481,20 +443,24 @@ function setupFeedback() {
       const scene = state.deck[state.index];
       state.ratings[p][scene.movie] = Number(e.target.value);
       e.target.classList.remove('untouched');
+      $('#out-' + p).textContent = e.target.value;
+      paintFader(e.target);
       saveTaste();
     });
   });
-  $('#fb-want').addEventListener('input', (e) => { state.want = Number(e.target.value); saveTaste(); });
+  $('#fb-want').addEventListener('input', (e) => {
+    state.want = 2 * Number(e.target.value) - 1;
+    paintFader(e.target);
+    document.querySelectorAll('#want-notches span').forEach((n, i) => n.classList.toggle('on', i === Number(e.target.value) - 1));
+    saveTaste();
+  });
+  document.querySelectorAll('#mode-toggle button').forEach((b) => b.addEventListener('click', () => {
+    state.solo = b.dataset.mode === '1';
+    store('set', 'fol-solo', state.solo ? '1' : '0');
+    renderFeedback(state.movies.get(state.deck[state.index].movie));
+  }));
   $('#btn-suggest').addEventListener('click', openSuggestions);
   $('#suggest-close').addEventListener('click', () => $('#suggest').close());
-  $('#btn-forget').addEventListener('click', () => {
-    state.ratings = { a: {}, b: {} };
-    state.want = 3;
-    store('remove', 'fol-taste');
-    store('remove', 'fol-seen');
-    $('#suggest').close();
-    renderFeedback(state.movies.get(state.deck[state.index].movie));
-  });
 }
 
 /* ---------- init ---------- */
@@ -521,8 +487,8 @@ const TUTORIAL = [
   ['Read the scene', 'Each card describes a moment from a film, a series or a book. Read it out loud to each other.'],
   ['Answer together', 'The question in the dotted box is about you, not the character. Take turns: what would you do? There are no wrong answers.'],
   ['Go deeper', 'Tap the little arrow under the question for follow-up questions when you want to dig further.'],
-  ['Rate it', 'Each of you moves your own slider (gold and silver) for how much you liked the title. The third slider says whether you want more of the same or something different.'],
-  ['Get ideas for later', 'Suggest gives you films, series and books that fit you both, and where to watch them. Then tap Next card to keep going.'],
+  ['Rate it', 'Each player moves their own slider (gold and silver) for how much they liked the title. Playing alone? Switch to Solo. The third slider says whether you are in the mood for more of the same.'],
+  ['Get ideas for later', 'Suggest gives you a few films, series and books that fit you both. Tap a cover to open its page. Then tap Next card to keep going.'],
 ];
 let tutStep = 0;
 
@@ -546,9 +512,9 @@ function seenCount() {
   try { return JSON.parse(store('get', 'fol-seen') || '[]').length; } catch (e) { return 0; }
 }
 
-// The "How to play" pill stays visible for the first four cards on this device.
+// The small "?" button glows during the first four cards on this device.
 function syncHowto() {
-  $('#btn-howto').hidden = !(seenCount() <= 4 && !store('get', 'fol-howto-done'));
+  $('#btn-howto').classList.toggle('nudge', seenCount() <= 4 && !store('get', 'fol-howto-done'));
 }
 
 function setupTutorial() {
