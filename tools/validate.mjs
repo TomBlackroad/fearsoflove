@@ -11,8 +11,11 @@ const movieIds = new Set();
 for (const m of movies) {
   if (movieIds.has(m.id)) errors.push(`duplicate movie id: ${m.id}`);
   movieIds.add(m.id);
-  if (!m.title || !m.year || !['movie', 'tv'].includes(m.type)) errors.push(`movie ${m.id}: needs title, year, type (movie|tv)`);
+  if (!m.title || !m.year || !['movie', 'tv', 'book'].includes(m.type)) errors.push(`movie ${m.id}: needs title, year, type (movie|tv|book)`);
+  if (m.type === 'book' && !m.author) errors.push(`book ${m.id}: needs author`);
   if (!Array.isArray(m.genres) || m.genres.length === 0) errors.push(`movie ${m.id}: needs at least one genre`);
+  if (![1, 2, 3, 4, 5].includes(m.intensity)) errors.push(`movie ${m.id}: needs intensity 1 (light and cozy) to 5 (intense and deep)`);
+  if (!Array.isArray(m.tags) || m.tags.length < 3) errors.push(`movie ${m.id}: needs at least 3 mood tags (used by the recommender)`);
 }
 
 const sceneIds = new Set();

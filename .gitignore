@@ -1,3 +1,6 @@
 .env
 .DS_Store
 node_modules/
+
+# raw usage logs never go in the public repo
+logs/

@@ -13,7 +13,9 @@ const state = {
   deck: [],
   index: 0,
   typeFilter: 'all', // all | movie | tv
-  showQ: false,
+  ratings: { a: {}, b: {} }, // movie id -> 1..10, one set per player (kept on this device only)
+  want: 3,     // shared: 1 = something different ... 5 = more like this
+  similar: null, providers: null, model: null, country: 'US',
   showDeep: false,
 };
 
@@ -44,10 +46,47 @@ function spreadTitles(deck) {
   return deck;
 }
 
+const TYPE_LABEL = { movie: 'Film', tv: 'Series', book: 'Book' };
+
+// Every book gets the same editorial cover: cream paper, double rule, title, ornament, author.
+function bookCover(book) {
+  const c = document.createElement('div');
+  c.className = 'cover';
+  const frame = document.createElement('div');
+  frame.className = 'cover-frame';
+  const t = document.createElement('div');
+  t.className = 'cover-title';
+  const longest = Math.max(...book.title.split(/\s+/).map((w) => w.length));
+  const base = book.title.length > 34 ? 9 : book.title.length > 18 ? 12 : 15;
+  t.style.fontSize = Math.min(base, 95 / longest).toFixed(1) + 'cqw'; // never break a word
+  t.textContent = book.title;
+  const orn = document.createElement('div');
+  orn.className = 'cover-orn';
+  orn.textContent = '❦\uFE0E';
+  const a = document.createElement('div');
+  a.className = 'cover-author';
+  a.textContent = book.author || '';
+  frame.append(t, orn, a);
+  c.append(frame);
+  return c;
+}
+
+function findBookLink(book) {
+  const a = document.createElement('a');
+  a.href = 'https://openlibrary.org/search?q=' + encodeURIComponent(book.title + ' ' + (book.author || ''));
+  a.target = '_blank'; a.rel = 'noopener noreferrer';
+  a.textContent = 'Find it (Open Library) ↗';
+  return a;
+}
+
 function hueFor(id) {
   let h = 0;
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return h;
+}
+
+function store(op, key, value) {
+  try { return op === 'get' ? localStorage.getItem(key) : op === 'set' ? localStorage.setItem(key, value) : localStorage.removeItem(key); } catch (e) { return null; }
 }
 
 async function loadJSON(path, optional) {
@@ -63,14 +102,31 @@ async function loadJSON(path, optional) {
 
 /* ---------- cards ---------- */
 
+// Cards you have not seen on this device come first; everything is reshuffled every time.
+function buildDeck(pool) {
+  let seen = new Set();
+  try { seen = new Set(JSON.parse(store('get', 'fol-seen') || '[]')); } catch (e) { /* ignore */ }
+  let fresh = pool.filter((sc) => !seen.has(sc.id));
+  if (!fresh.length) { pool.forEach((sc) => seen.delete(sc.id)); store('set', 'fol-seen', JSON.stringify(Array.from(seen))); fresh = pool; }
+  const fs = new Set(fresh);
+  return spreadTitles(shuffle(fresh)).concat(spreadTitles(shuffle(pool.filter((sc) => !fs.has(sc)))));
+}
+
+function markSeen(id) {
+  try {
+    const seen = new Set(JSON.parse(store('get', 'fol-seen') || '[]'));
+    seen.add(id);
+    store('set', 'fol-seen', JSON.stringify(Array.from(seen)));
+  } catch (e) { /* ignore */ }
+}
+
 function resetReveal() {
-  state.showQ = false;
   state.showDeep = false;
 }
 
 function newGame() {
   const pool = state.scenes.filter((sc) => state.typeFilter === 'all' || state.movies.get(sc.movie).type === state.typeFilter);
-  state.deck = spreadTitles(shuffle(pool));
+  state.deck = buildDeck(pool);
   state.index = 0;
   resetReveal();
   show('play');
@@ -80,6 +136,8 @@ function newGame() {
 function renderPoster(movie) {
   const box = $('#poster');
   box.textContent = '';
+  box.classList.toggle('book', movie.type === 'book');
+  if (movie.type === 'book') { box.append(bookCover(movie)); return; }
   box.style.setProperty('--hue', hueFor(movie.id));
   const fallback = document.createElement('div');
   fallback.className = 'fallback';
@@ -100,9 +158,9 @@ function renderCard() {
   $('#card').hidden = false;
   $('#controls').hidden = false;
   $('#progress').textContent = (state.index + 1) + ' / ' + state.deck.length;
-  $('#card-meta').textContent = movie.type === 'tv' ? 'Series' : 'Film';
+  $('#card-meta').textContent = TYPE_LABEL[movie.type] || 'Film';
   $('#card-title').textContent = movie.title;
-  $('#card-sub').textContent = movie.year + ' · ' + movie.genres.join(', ');
+  $('#card-sub').textContent = (movie.author ? movie.author + ' · ' : '') + movie.year + ' · ' + movie.genres.join(', ');
   const wiki = $('#card-wiki');
   wiki.hidden = !movie.wikipedia;
   if (movie.wikipedia) wiki.href = movie.wikipedia;
@@ -118,18 +176,19 @@ function renderCard() {
   list.textContent = '';
   scene.followUps.forEach((q) => { const li = document.createElement('li'); li.textContent = q; list.append(li); });
 
-  $('#prompt-box').hidden = !state.showQ;
   list.hidden = !state.showDeep;
-  $('#btn-q').disabled = state.showQ;
-  $('#btn-deep').disabled = state.showDeep;
+  $('#btn-deep').setAttribute('aria-expanded', String(state.showDeep));
+  renderFeedback(movie);
+  markSeen(scene.id);
+  syncHowto();
   $('#btn-next').textContent = state.index === state.deck.length - 1 ? 'Finish' : 'Next card';
   $('#btn-prev').disabled = state.index === 0;
 }
 
-function reveal() { // one step at a time: question, then follow-ups
-  if (!state.showQ) state.showQ = true;
-  else state.showDeep = true;
-  renderCard();
+function reveal() { // toggle the follow-up questions
+  state.showDeep = !state.showDeep;
+  $('#followups').hidden = !state.showDeep;
+  $('#btn-deep').setAttribute('aria-expanded', String(state.showDeep));
 }
 
 function next() {
@@ -148,10 +207,368 @@ function endGame() {
   show('end');
 }
 
+
+/* ---------- two players: feedback sliders + recommender (all on this device) ---------- */
+
+const WANT_LABELS = ['', 'something quite different', 'a little different', 'open to anything', 'something similar', 'more of exactly this'];
+
+function saveTaste() {
+  store('set', 'fol-taste', JSON.stringify({ a: state.ratings.a, b: state.ratings.b, want: state.want }));
+}
+
+function loadTaste() {
+  try {
+    const t = JSON.parse(store('get', 'fol-taste') || '{}');
+    const old = t.ratings && typeof t.ratings === 'object' ? t.ratings : {}; // v1 had a single set of ratings
+    state.ratings.a = t.a && typeof t.a === 'object' ? t.a : old;
+    state.ratings.b = t.b && typeof t.b === 'object' ? t.b : {};
+    if (t.want >= 1 && t.want <= 5) state.want = t.want;
+  } catch (e) { /* ignore */ }
+}
+
+function renderFeedback(movie) {
+  $('#feedback').hidden = false;
+  $('#fb-title').textContent = movie.title;
+  ['a', 'b'].forEach((p) => {
+    const el = $('#fb-like-' + p);
+    const v = state.ratings[p][movie.id];
+    el.value = v || 5;
+    el.classList.toggle('untouched', !v);
+  });
+  $('#fb-want').value = state.want;
+}
+
+function jaccard(a, b) {
+  const A = new Set(a), B = new Set(b);
+  let inter = 0;
+  A.forEach((x) => { if (B.has(x)) inter++; });
+  const union = A.size + B.size - inter;
+  return union ? inter / union : 0;
+}
+
+function similarity(a, b) {
+  return 0.4 * jaccard(a.genres, b.genres)
+    + 0.45 * jaccard(a.tags || [], b.tags || [])
+    + 0.05 * (a.type === b.type ? 1 : 0)
+    + 0.1 * (1 - Math.abs((a.intensity || 3) - (b.intensity || 3)) / 4);
+}
+
+function currentLike(p, id) {
+  const mine = state.ratings[p][id];
+  if (mine) return mine;
+  const other = state.ratings[p === 'a' ? 'b' : 'a'][id];
+  return other || 8; // pressing Suggest without rating means "we liked this one"
+}
+
+// One partner's view: every title they rated is an anchor (liked pulls similar titles up, disliked pushes them down).
+// The shared "in the mood" slider scales how much the current title counts and which intensity is wanted.
+function anchorsFor(p, cur) {
+  const anchors = [];
+  Object.entries(state.ratings[p]).forEach(([id, v]) => {
+    if (id !== cur.id && state.movies.has(id)) anchors.push({ m: state.movies.get(id), w: (v - 5.5) / 4.5 });
+  });
+  let w = (2 * (currentLike(p, cur.id) - 5.5)) / 4.5;
+  if (w > 0) w *= 0.5 * (state.want - 3) + 0.5; // want 1 -> 0, 3 -> 0.5, 5 -> 1.5
+  anchors.push({ m: cur, w });
+  return anchors;
+}
+
+function partnerScore(t, anchors, wantedI) {
+  const norm = anchors.reduce((s, a) => s + Math.abs(a.w), 0) || 1;
+  let profile = 0, best = null;
+  anchors.forEach((a) => {
+    let sim = similarity(t, a.m);
+    const co = state.model && state.model.coLike && state.model.coLike[a.m.id] && state.model.coLike[a.m.id][t.id];
+    if (co) sim += 0.4 * co; // what other couples liked together (only present once enough data exists)
+    profile += a.w * sim;
+    if (a.w > 0 && (!best || a.w * sim > best.v)) best = { m: a.m, v: a.w * sim };
+  });
+  const moodFit = 1 - Math.abs((t.intensity || 3) - wantedI) / 4;
+  return { score: 0.6 * (profile / norm) + 0.4 * moodFit, anchor: best && best.m, moodFit };
+}
+
+// Suggestions that fit BOTH people: 0.5 * average + 0.5 * the less happy partner.
+function recommend(cur) {
+  const s = (state.want - 1) / 4;
+  const I = cur.intensity || 3;
+  const wantedI = s * I + (1 - s) * (6 - I);
+  const A = anchorsFor('a', cur), B = anchorsFor('b', cur);
+  const rank = (items) => items.map((t) => {
+    const pa = partnerScore(t, A, wantedI), pb = partnerScore(t, B, wantedI);
+    return { t, anchor: pa.score >= pb.score ? pa.anchor : pb.anchor, moodFit: pa.moodFit, fit: Math.min(pa.score, pb.score), score: 0.5 * (pa.score + pb.score) / 2 + 0.5 * Math.min(pa.score, pb.score) };
+  }).sort((x, y) => y.score - x.score);
+  const ranked = rank(Array.from(state.movies.values()).filter((t) => t.id !== cur.id));
+  const inside = ranked.slice(0, 3);
+  // keep the mix interesting: at least one book and one film/series among the three
+  [(x) => x.t.type === 'book', (x) => x.t.type !== 'book'].forEach((isKind) => {
+    if (!inside.some(isKind)) { const alt = ranked.find(isKind); if (alt) inside[2] = alt; }
+  });
+  const outside = rank(state.similar ? Object.values(state.similar.pool) : []).slice(0, 2);
+  return { inside, outside };
+}
+
+function sharedTags(a, b) {
+  const B = new Set(b.tags || []);
+  return (a.tags || []).filter((x) => B.has(x)).slice(0, 2);
+}
+
+/* ---------- where to watch ---------- */
+
+const COUNTRY_KEY = 'fol-country';
+
+function pickCountry(list) {
+  const saved = store('get', COUNTRY_KEY);
+  if (saved && list.includes(saved)) return saved;
+  const region = ((navigator.language || '').split('-')[1] || '').toUpperCase();
+  return list.includes(region) ? region : list.includes('US') ? 'US' : list[0];
+}
+
+function watchLine(key) {
+  const p = document.createElement('p');
+  p.className = 'rec-watch';
+  const data = state.providers && state.providers.by[key] && state.providers.by[key][state.country];
+  if (!state.providers) { p.textContent = 'Where to watch: not available right now.'; return p; }
+  if (!data) { p.textContent = 'Where to watch: not listed in ' + state.country + '.'; return p; }
+  const parts = [];
+  if (data.s.length) parts.push('Streaming: ' + data.s.slice(0, 3).join(', '));
+  else if (data.r.length || data.b.length) parts.push('Rent or buy: ' + (data.r.length ? data.r : data.b).slice(0, 2).join(', '));
+  else parts.push('No service listed in ' + state.country);
+  const [first, ...rest] = parts[0].split(': ');
+  p.append(Object.assign(document.createElement('b'), { textContent: first + ': ' }), rest.join(': '));
+  if (data.l) {
+    p.append(' · ');
+    const a = document.createElement('a');
+    a.href = data.l; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'all options ↗';
+    p.append(a);
+  }
+  return p;
+}
+
+function posterBox(title, hue, path, book) {
+  if (book) { const w = document.createElement('div'); w.className = 'poster book'; w.append(bookCover(book)); return w; }
+  const poster = document.createElement('div');
+  poster.className = 'poster';
+  poster.style.setProperty('--hue', hue);
+  const fb = document.createElement('div');
+  fb.className = 'fallback';
+  fb.textContent = title;
+  poster.append(fb);
+  if (path) {
+    const img = new Image();
+    img.alt = 'Poster of ' + title;
+    img.onload = () => { fb.remove(); poster.append(img); };
+    img.src = POSTER_BASE + path;
+  }
+  return poster;
+}
+
+function recItem(r, outside) {
+  const t = r.t;
+  const li = document.createElement('li');
+  li.className = 'rec';
+  const poster = outside ? posterBox(t.title, hueFor(t.key), t.poster) : posterBox(t.title, hueFor(t.id), state.posters[t.id] && state.posters[t.id].poster, t.type === 'book' ? t : null);
+
+  const body = document.createElement('div');
+  body.className = 'rec-body';
+  const h = document.createElement('h3');
+  h.textContent = t.title;
+  const sub = document.createElement('p');
+  sub.className = 'muted';
+  sub.textContent = (TYPE_LABEL[t.type] || 'Film') + ' · ' + (t.author ? t.author + ' · ' : '') + t.year;
+  const why = document.createElement('p');
+  why.className = 'rec-why';
+  const bits = [];
+  if (r.anchor) { const sh = sharedTags(t, r.anchor); bits.push('Like ' + r.anchor.title + (sh.length ? ': ' + sh.join(', ') : '')); }
+  if (r.fit >= 0.45) bits.push('fits you both');
+  else if (r.moodFit >= 0.75) bits.push('fits your mood');
+  why.textContent = bits.join(' · ');
+
+  const key = outside ? t.key : t.type === 'book' ? '' : (state.posters[t.id] ? (t.type === 'tv' ? 'tv:' : 'movie:') + state.posters[t.id].tmdbId : '');
+  const links = document.createElement('div');
+  links.className = 'rec-links';
+  if (outside) {
+    const a = document.createElement('a');
+    a.href = 'https://www.themoviedb.org/' + t.type + '/' + t.tmdb;
+    a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'TMDB ↗';
+    links.append(a);
+  } else {
+    const play = document.createElement('button');
+    play.type = 'button';
+    play.textContent = 'Play its scenes';
+    play.addEventListener('click', () => { $('#suggest').close(); playTitle(t.id); });
+    links.append(play);
+    if (t.wikipedia) {
+      const a = document.createElement('a');
+      a.href = t.wikipedia; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Wikipedia ↗';
+      links.append(a);
+    }
+  }
+  body.append(h, sub, why);
+  if (key) body.append(watchLine(key));
+  else if (!outside && t.type === 'book') { const f = document.createElement('p'); f.className = 'rec-watch'; f.append(findBookLink(t)); body.append(f); }
+  body.append(links);
+  li.append(poster, body);
+  return li;
+}
+
+function renderRecs() {
+  const scene = state.deck[state.index];
+  const cur = state.movies.get(scene.movie);
+  const { inside, outside } = recommend(cur);
+  const la = currentLike('a', cur.id), lb = currentLike('b', cur.id);
+  const both = Math.min(la, lb), gap = Math.abs(la - lb);
+  const disliked = both <= 4;
+  $('#suggest-title').textContent = disliked ? 'Something different' : 'Try these next';
+  let why;
+  if (disliked) why = 'Neither of you loved ' + cur.title + '. ';
+  else if (gap >= 4) why = 'You two felt differently about ' + cur.title + ', so these aim to fit you both. ';
+  else why = 'You both enjoyed ' + cur.title + '. ';
+  $('#suggest-why').textContent = why + 'Tonight: ' + WANT_LABELS[state.want] + '.';
+  const list = $('#recs');
+  list.textContent = '';
+  inside.forEach((r) => list.append(recItem(r, false)));
+  const out = $('#recs-out');
+  out.textContent = '';
+  outside.forEach((r) => out.append(recItem(r, true)));
+  $('#recs-out-head').hidden = !outside.length;
+}
+
+async function openSuggestions() {
+  const sel = $('#country');
+  if (!state.providers && !state.providersTried) {
+    state.providersTried = true;
+    state.providers = await loadJSON('data/providers.json', true);
+  }
+  if (!state.similar && !state.similarTried) {
+    state.similarTried = true;
+    state.similar = await loadJSON('data/similar.json', true);
+  }
+  const countries = state.providers ? state.providers.countries : ['US'];
+  if (!sel.options.length) {
+    let names = null;
+    try { names = new Intl.DisplayNames([navigator.language || 'en'], { type: 'region' }); } catch (e) { /* ignore */ }
+    countries.forEach((c) => sel.append(new Option(names ? names.of(c) : c, c)));
+    state.country = pickCountry(countries);
+    sel.value = state.country;
+    sel.addEventListener('change', () => { state.country = sel.value; store('set', COUNTRY_KEY, state.country); renderRecs(); });
+  }
+  $('#suggest-foot').hidden = false;
+  renderRecs();
+  $('#suggest').showModal();
+}
+
+function syncTypeToggle() {
+  document.querySelectorAll('#type-toggle button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.type === state.typeFilter)));
+}
+
+// Start a new deck with one title's scenes first, then everything else.
+function playTitle(id) {
+  state.typeFilter = 'all';
+  syncTypeToggle();
+  const first = shuffle(state.scenes.filter((sc) => sc.movie === id));
+  const rest = buildDeck(state.scenes.filter((sc) => sc.movie !== id));
+  state.deck = first.concat(rest);
+  state.index = 0;
+  resetReveal();
+  show('play');
+  renderCard();
+}
+
+function setupFeedback() {
+  ['a', 'b'].forEach((p) => {
+    const el = $('#fb-like-' + p);
+    el.addEventListener('input', (e) => {
+      const scene = state.deck[state.index];
+      state.ratings[p][scene.movie] = Number(e.target.value);
+      e.target.classList.remove('untouched');
+      saveTaste();
+    });
+  });
+  $('#fb-want').addEventListener('input', (e) => { state.want = Number(e.target.value); saveTaste(); });
+  $('#btn-suggest').addEventListener('click', openSuggestions);
+  $('#suggest-close').addEventListener('click', () => $('#suggest').close());
+  $('#btn-forget').addEventListener('click', () => {
+    state.ratings = { a: {}, b: {} };
+    state.want = 3;
+    store('remove', 'fol-taste');
+    store('remove', 'fol-seen');
+    $('#suggest').close();
+    renderFeedback(state.movies.get(state.deck[state.index].movie));
+  });
+}
+
 /* ---------- init ---------- */
 
+/* ---------- anonymous visit counter (GoatCounter: no cookies, no personal data) ---------- */
+
+function setupCounter() {
+  const code = String((window.FOL_CONFIG || {}).goatcounter || '').trim();
+  if (!/^[a-z0-9-]+$/i.test(code)) return;
+  const sc = document.createElement('script');
+  sc.async = true;
+  sc.dataset.goatcounter = 'https://' + code + '.goatcounter.com/count';
+  sc.src = 'https://gc.zgo.at/count.js';
+  document.head.append(sc);
+  // show the total in About (works once "Allow adding visitor counts" is switched on in GoatCounter)
+  fetch('https://' + code + '.goatcounter.com/counter/TOTAL.json').then((r) => r.json()).then((d) => {
+    if (d && d.count) { const v = $('#visits'); v.textContent = 'Visits so far: ' + d.count; v.hidden = false; }
+  }).catch(() => {});
+}
+
+/* ---------- tutorial (offered during the first cards) ---------- */
+
+const TUTORIAL = [
+  ['Read the scene', 'Each card describes a moment from a film, a series or a book. Read it out loud to each other.'],
+  ['Answer together', 'The question in the dotted box is about you, not the character. Take turns: what would you do? There are no wrong answers.'],
+  ['Go deeper', 'Tap the little arrow under the question for follow-up questions when you want to dig further.'],
+  ['Rate it', 'Each of you moves your own slider (gold and silver) for how much you liked the title. The third slider says whether you want more of the same or something different.'],
+  ['Get ideas for later', 'Suggest gives you films, series and books that fit you both, and where to watch them. Then tap Next card to keep going.'],
+];
+let tutStep = 0;
+
+function renderTutorial() {
+  const [title, text] = TUTORIAL[tutStep];
+  $('#tut-step').textContent = 'Step ' + (tutStep + 1) + ' of ' + TUTORIAL.length;
+  $('#tut-title').textContent = title;
+  $('#tut-text').textContent = text;
+  $('#tut-back').hidden = tutStep === 0;
+  $('#tut-next').textContent = tutStep === TUTORIAL.length - 1 ? 'Got it' : 'Next';
+  $('#tut-dots').innerHTML = TUTORIAL.map((_, i) => '<i class="' + (i === tutStep ? 'on' : '') + '"></i>').join('');
+}
+
+function openTutorial() {
+  tutStep = 0;
+  renderTutorial();
+  $('#tutorial').showModal();
+}
+
+function seenCount() {
+  try { return JSON.parse(store('get', 'fol-seen') || '[]').length; } catch (e) { return 0; }
+}
+
+// The "How to play" pill stays visible for the first four cards on this device.
+function syncHowto() {
+  $('#btn-howto').hidden = !(seenCount() <= 4 && !store('get', 'fol-howto-done'));
+}
+
+function setupTutorial() {
+  $('#btn-howto').addEventListener('click', openTutorial);
+  $('#about-howto').addEventListener('click', () => { $('#about').close(); openTutorial(); });
+  $('#tut-back').addEventListener('click', () => { tutStep = Math.max(0, tutStep - 1); renderTutorial(); });
+  $('#tut-next').addEventListener('click', () => {
+    if (tutStep < TUTORIAL.length - 1) { tutStep++; renderTutorial(); return; }
+    store('set', 'fol-howto-done', '1');
+    $('#tutorial').close();
+    syncHowto();
+  });
+}
+
 async function init() {
+  setupCounter();
+  setupTutorial();
   $('#btn-info').addEventListener('click', () => $('#about').showModal());
+  setupFeedback();
+  loadTaste();
   try {
     const [movies, scenes, posters] = await Promise.all([
       loadJSON('data/movies.json'),
@@ -170,18 +587,17 @@ async function init() {
     return;
   }
 
-  $('#btn-q').addEventListener('click', () => { state.showQ = true; renderCard(); });
-  $('#btn-deep').addEventListener('click', () => { state.showQ = true; state.showDeep = true; renderCard(); });
+  $('#btn-deep').addEventListener('click', reveal);
   document.querySelectorAll('#type-toggle button').forEach((btn) => btn.addEventListener('click', () => {
     state.typeFilter = btn.dataset.type;
-    document.querySelectorAll('#type-toggle button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+    syncTypeToggle();
     newGame();
   }));
   $('#btn-next').addEventListener('click', next);
   $('#btn-prev').addEventListener('click', back);
   $('#btn-again').addEventListener('click', newGame);
   document.addEventListener('keydown', (e) => {
-    if (!$('#screen-play').classList.contains('is-active') || $('#about').open) return;
+    if (!$('#screen-play').classList.contains('is-active') || $('#about').open || $('#tutorial').open || $('#suggest').open) return;
     if (e.key === 'ArrowRight') next();
     if (e.key === 'ArrowLeft') back();
     if (e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); reveal(); }
