@@ -161,44 +161,41 @@ textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; 
 @keyframes nudge { 0%,100% { box-shadow: 0 0 0 0 rgba(224,164,88,.45); } 50% { box-shadow: 0 0 0 6px rgba(224,164,88,0); } }
 @media (prefers-reduced-motion: reduce) { .icon-btn.nudge { animation: none; } }
 
-.feedback { margin-top: 12px; padding: 12px 14px 12px; border: 1px solid #3a2a2f; border-radius: 14px; background: linear-gradient(#1f1317, #150b0f); box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 6px 18px rgba(0,0,0,.35); }
-.fb-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.feedback { margin-top: 14px; padding: 16px 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.025); }
+.fb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .fb-title { margin: 0; font-size: .8rem; color: var(--muted); min-width: 0; }
 .fb-title strong { color: var(--ink); font-weight: 600; }
 .seg-sm { flex: none; }
 .seg-sm button { font-size: .7rem; padding: 4px 9px; }
-.fb-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.fb-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 20px; }
 .feedback.solo .fb-pair { grid-template-columns: 1fr; }
 .feedback.solo .chan-b { display: none; }
-.chan-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.chan-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .chan label { display: flex; align-items: center; font-size: .78rem; text-transform: none; letter-spacing: 0; color: var(--ink); }
-.lcd { min-width: 2.1em; padding: 3px 6px; border: 1px solid #2b1a1f; border-radius: 4px; background: #0b0506; color: #ffb454; font: 700 .8rem/1 ui-monospace, Menlo, Consolas, monospace; text-align: center; text-shadow: 0 0 6px rgba(255,180,84,.55); }
-.chan-b .lcd { color: #dfe6f2; text-shadow: 0 0 6px rgba(200,215,240,.45); }
+.lcd { min-width: 2em; padding: 2px 7px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); font: 600 .8rem/1.4 var(--serif); text-align: center; }
 .dot { margin-right: 6px; }
 
 .fader { --n: 9; position: relative; padding: 4px 0 14px; }
 .fader-3 { --n: 2; }
-.fader::after { content: ''; position: absolute; left: 9px; right: 9px; bottom: 3px; height: 7px; pointer-events: none;
-  background: linear-gradient(90deg, #7a666b 1px, transparent 1px) 0 0 / calc((100% - 1px) / var(--n)) 100% repeat-x, linear-gradient(#7a666b, #7a666b) 100% 0 / 1px 100% no-repeat; }
+.fader::after { content: ''; position: absolute; left: 9px; right: 9px; bottom: 4px; height: 6px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,.22) 1px, transparent 1px) 0 0 / calc((100% - 1px) / var(--n)) 100% repeat-x, linear-gradient(rgba(255,255,255,.22), rgba(255,255,255,.22)) 100% 0 / 1px 100% no-repeat; }
 .fader input[type=range] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 28px; margin: 0; background: transparent; --f: .5; }
-.chan-a .fader input { --c: #e0a458; --cap: #e8b86e; }
-.chan-b .fader input { --c: #c9ced6; --cap: #dfe3ea; }
-.chan-want .fader input { --c: #d98a6c; --cap: #eadfd4; }
-.fader input.untouched { --c: rgba(224,164,88,.28); }
-.chan-b .fader input.untouched { --c: rgba(201,206,214,.28); }
-.fader input[type=range]::-webkit-slider-runnable-track { height: 10px; border: 1px solid #000; border-radius: 6px; box-shadow: inset 0 2px 4px #000, 0 1px 0 rgba(255,255,255,.07);
-  background: repeating-linear-gradient(90deg, var(--c) 0 6px, transparent 6px 9px) 0 0 / calc(9px + (100% - 18px) * var(--f)) 100% no-repeat, repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 6px, transparent 6px 9px), linear-gradient(#050203, #140a0d); }
-.fader input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 28px; margin-top: -9px; border: 1px solid #000; border-radius: 4px; cursor: grab;
-  background: linear-gradient(90deg, transparent 8px, rgba(0,0,0,.7) 8px 10px, transparent 10px), linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 45%, rgba(0,0,0,.3)), var(--cap);
-  box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.6); }
-.fader input[type=range]::-moz-range-track { height: 10px; border: 1px solid #000; border-radius: 6px; box-shadow: inset 0 2px 4px #000;
-  background: repeating-linear-gradient(90deg, var(--c) 0 6px, transparent 6px 9px) 0 0 / calc(9px + (100% - 18px) * var(--f)) 100% no-repeat, repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 6px, transparent 6px 9px), linear-gradient(#050203, #140a0d); }
-.fader input[type=range]::-moz-range-thumb { width: 16px; height: 26px; border: 1px solid #000; border-radius: 4px; cursor: grab;
-  background: linear-gradient(90deg, transparent 7px, rgba(0,0,0,.7) 7px 9px, transparent 9px), linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 45%, rgba(0,0,0,.3)), var(--cap); }
+.chan-a .fader input { --c: #c9974f; --cap: #e6dccb; }
+.chan-b .fader input { --c: #aeb4bd; --cap: #e6dccb; }
+.chan-want .fader input { --c: #b98c7a; --cap: #e6dccb; }
+.fader input.untouched { --c: rgba(255,255,255,.14); }
+.fader input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; border: 0; box-shadow: inset 0 1px 2px rgba(0,0,0,.6);
+  background: linear-gradient(var(--c), var(--c)) 0 0 / calc(9px + (100% - 18px) * var(--f)) 100% no-repeat, rgba(255,255,255,.1); }
+.fader input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 26px; margin-top: -10px; border: 1px solid rgba(0,0,0,.5); border-radius: 4px; cursor: grab;
+  background: linear-gradient(90deg, transparent 7px, rgba(0,0,0,.35) 7px 9px, transparent 9px), linear-gradient(180deg, rgba(255,255,255,.25), rgba(0,0,0,.12)), var(--cap);
+  box-shadow: 0 2px 5px rgba(0,0,0,.45); }
+.fader input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; border: 0; box-shadow: inset 0 1px 2px rgba(0,0,0,.6);
+  background: linear-gradient(var(--c), var(--c)) 0 0 / calc(9px + (100% - 18px) * var(--f)) 100% no-repeat, rgba(255,255,255,.1); }
+.fader input[type=range]::-moz-range-thumb { width: 14px; height: 24px; border: 1px solid rgba(0,0,0,.5); border-radius: 4px; cursor: grab;
+  background: linear-gradient(90deg, transparent 6px, rgba(0,0,0,.35) 6px 8px, transparent 8px), linear-gradient(180deg, rgba(255,255,255,.25), rgba(0,0,0,.12)), var(--cap); }
 .fader input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
-.fb-scale { display: flex; justify-content: space-between; margin: -4px 0 8px; font-size: .66rem; color: var(--muted); }
-.chan-want > label { display: block; margin-bottom: 4px; }
-.notches { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: -2px; font-size: .68rem; line-height: 1.2; color: var(--muted); }
+.chan-want > label { display: block; margin-bottom: 10px; }
+.notches { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 2px; font-size: .68rem; line-height: 1.25; color: var(--muted); }
 .notches span:nth-child(1) { text-align: left; }
 .notches span:nth-child(2) { text-align: center; }
 .notches span:nth-child(3) { text-align: right; }
@@ -210,7 +207,7 @@ textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; 
 .followups { margin-top: 10px; }
 .deeper-arrow { margin-top: 12px; }
 
-.fader-ends { display: flex; justify-content: space-between; margin-top: -2px; font-size: .62rem; color: var(--muted); white-space: nowrap; }
+.fader-ends { display: flex; justify-content: space-between; margin-top: 2px; font-size: .62rem; color: var(--muted); white-space: nowrap; }
 @media (max-width: 400px) {
   .play-head { gap: 8px; }
   .play-head .seg button { padding: 6px 9px; font-size: .8rem; }
