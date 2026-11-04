@@ -158,8 +158,13 @@ legend { font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; co
 #rm-count { margin: 14px 0 0; }
 .link-box { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
 #rm-link { width: 100%; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; color: var(--ink); font: .8rem/1.3 ui-monospace, Menlo, Consolas, monospace; }
-.link-actions { display: flex; gap: 8px; margin-top: 10px; }
-.link-actions .btn { flex: 1; padding: 11px 12px; font-size: .9rem; }
+.share-label { margin: 12px 0 6px; font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+.share-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.share-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 4px 7px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--ink); font: inherit; font-size: .72rem; cursor: pointer; }
+.share-btn svg { color: var(--accent); }
+.share-btn:hover:not(:disabled), .share-btn:focus-visible { border-color: var(--accent); background: rgba(224,164,88,.08); outline: none; }
+.share-btn:disabled { opacity: .4; cursor: default; }
+.rm-open-btn { width: 100%; margin-top: 10px; padding: 12px; }
 #rm-status { margin: 8px 0 0; min-height: 1.2em; }
 
 @media (max-width: 400px) {

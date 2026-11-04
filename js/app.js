@@ -717,7 +717,7 @@ function renderRemote() {
   $('#rm-count').classList.toggle('error', !n);
   const link = roomLink(draft.id, cfg);
   $('#rm-link').value = n ? link : '';
-  ['#rm-copy', '#rm-open', '#rm-share'].forEach((s) => { $(s).disabled = !n; });
+  document.querySelectorAll('#rm-share-grid button, #rm-open').forEach((b) => { b.disabled = !n; });
   $('#rm-status').textContent = '';
 }
 
@@ -727,10 +727,35 @@ function openRemote() {
     ? { types: state.room.cfg.types.slice(), genres: state.room.cfg.genres.slice(), depths: state.room.cfg.depths.slice() }
     : { types: localCfg().types.slice(), genres: state.genre === 'all' ? GENRE_KEYS.slice() : [state.genre], depths: [1, 2, 3] };
   if (state.room) draft.id = state.room.id;
-  $('#rm-share').hidden = !navigator.share;
   renderRemote();
   $('#remote').showModal();
   track('room-dialog');
+}
+
+// Share the room link through the app people already use.
+async function shareRoom(via) {
+  const url = $('#rm-link').value;
+  if (!url) return;
+  const text = 'Play Fears of Love with me: same cards, wherever we are. Open this link:';
+  const both = text + ' ' + url;
+  const status = $('#rm-status');
+  const enc = encodeURIComponent;
+  const open = (href) => { window.open(href, '_blank', 'noopener'); };
+  track('room-share/' + via);
+  if (via === 'whatsapp') return open('https://wa.me/?text=' + enc(both));
+  if (via === 'telegram') return open('https://t.me/share/url?url=' + enc(url) + '&text=' + enc(text));
+  if (via === 'email') { location.href = 'mailto:?subject=' + enc('Play Fears of Love with me') + '&body=' + enc(both); return; }
+  if (via === 'sms') { location.href = 'sms:?&body=' + enc(both); return; }
+  if ((via === 'signal' || via === 'more') && navigator.share) {
+    try { await navigator.share({ title: 'Fears of Love', text, url }); status.textContent = ''; } catch (e) { /* cancelled */ }
+    return;
+  }
+  // copy (and Signal on computers: Signal has no web share link, so copy and paste)
+  const ok = await copyText(url);
+  status.textContent = !ok ? 'Select the link above and copy it.'
+    : via === 'signal' ? 'Link copied. Paste it in Signal.'
+    : via === 'more' ? 'Link copied. Paste it wherever you like.'
+    : 'Link copied. Send it to the others, then tap Open the room.';
 }
 
 async function copyText(text) {
@@ -746,14 +771,7 @@ function setupRemote() {
   $('#rm-genres-all').addEventListener('click', () => { draft.cfg.genres = GENRE_KEYS.slice(); renderRemote(); });
   $('#rm-genres-none').addEventListener('click', () => { draft.cfg.genres = []; renderRemote(); });
   $('#rm-link').addEventListener('focus', (e) => e.target.select());
-  $('#rm-copy').addEventListener('click', async () => {
-    const ok = await copyText($('#rm-link').value);
-    $('#rm-status').textContent = ok ? 'Link copied. Send it to the others, then tap Open.' : 'Select the link above and copy it.';
-    track('room-copy');
-  });
-  $('#rm-share').addEventListener('click', async () => {
-    try { await navigator.share({ title: 'Fears of Love', text: 'Play Fears of Love with me', url: $('#rm-link').value }); track('room-share'); } catch (e) { /* cancelled */ }
-  });
+  document.querySelectorAll('#rm-share-grid button').forEach((b) => b.addEventListener('click', () => shareRoom(b.dataset.via)));
   $('#rm-open').addEventListener('click', () => {
     track('room-open');
     const link = $('#rm-link').value;
