@@ -8,6 +8,7 @@
   "scripts": {
     "start": "python3 -m http.server 8080",
     "validate": "node tools/validate.mjs",
-    "posters": "node tools/fetch-posters.mjs"
+    "posters": "node tools/fetch-posters.mjs",
+    "stats": "node tools/posthog-stats.mjs"
   }
 }

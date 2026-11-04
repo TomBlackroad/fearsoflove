@@ -30,8 +30,8 @@ The game is plain HTML, CSS and JavaScript (no build step), so GitHub Pages serv
 | `data/posters.json` | Poster paths from TMDB (generated, see `docs/POSTERS.md`) |
 | `data/legacy-scenarios.json` | The 35 cards of the original version, kept for reference |
 | `tools/` | Poster fetcher and content validator |
-| `docs/` | Plan, content guide, posters, visit counter, data-collection plan (`DATA_COLLECTION.md`), feature ideas (`IDEAS.md`) |
-| `js/config.js` | Public settings (GoatCounter code, optional PostHog key) |
+| `docs/` | Plan, content guide, posters, analytics setup (`ANALYTICS_SETUP.md`), data-collection plan (`DATA_COLLECTION.md`), feature ideas (`IDEAS.md`) |
+| `js/config.js` | Public settings (PostHog project key) |
 | `icons/`, `manifest.webmanifest` | App icon and home-screen setup |
 
 ## Credits

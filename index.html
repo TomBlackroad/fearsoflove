@@ -3,12 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fears of Love: a movie-scene game for two</title>
-  <meta name="description" content="Iconic moments from movies, series and books, one question: what would you do? An ice-breaker game for two.">
+  <title>Fears of Love: an ice-breaker game with movies, series and books</title>
+  <meta name="description" content="A free conversation game for couples, friends and dates. 500+ cards with iconic moments from movies, series and books, and one question: what would you do? Play on one phone or together from far apart with a link.">
+  <link rel="canonical" href="https://tomblackroad.github.io/fearsoflove/">
   <meta name="theme-color" content="#14090d">
-  <meta property="og:title" content="Fears of Love">
-  <meta property="og:description" content="Iconic moments from movies, series and books, one question: what would you do?">
+  <!-- Google Search Console: paste your verification tag here (see docs/ANALYTICS_SETUP.md, part C) -->
+  <meta property="og:site_name" content="Fears of Love">
+  <meta property="og:title" content="Fears of Love: what would you do?">
+  <meta property="og:description" content="An ice-breaker game with iconic moments from movies, series and books. Play together, even far apart.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://tomblackroad.github.io/fearsoflove/">
+  <meta property="og:image" content="https://tomblackroad.github.io/fearsoflove/icons/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Fears of Love logo: a golden heart with a play button, and the tagline: what would you do?">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Fears of Love: what would you do?">
+  <meta name="twitter:description" content="An ice-breaker game with iconic moments from movies, series and books.">
+  <meta name="twitter:image" content="https://tomblackroad.github.io/fearsoflove/icons/og-image.jpg">
+  <script type="application/ld+json">
+  {"@context": "https://schema.org", "@type": "WebApplication", "name": "Fears of Love", "url": "https://tomblackroad.github.io/fearsoflove/",
+    "description": "A free ice-breaker conversation game with 500+ cards based on iconic moments from movies, series and books. Play on one device or together from far apart.",
+    "applicationCategory": "GameApplication", "operatingSystem": "Any (web browser)", "inLanguage": "en", "isAccessibleForFree": true,
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
+    "image": "https://tomblackroad.github.io/fearsoflove/icons/og-image.jpg", "author": {"@type": "Person", "name": "TomBlackroad", "url": "https://github.com/TomBlackroad"}}
+  </script>
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -20,6 +39,7 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <noscript><p style="padding:24px;color:#f6ede4">Fears of Love is an ice-breaker game with iconic moments from movies, series and books. Please turn on JavaScript to play.</p></noscript>
   <main id="app">
 
     <section id="screen-play" class="screen is-active" aria-label="Game">
@@ -117,8 +137,7 @@
     <p>Developed by <a href="https://github.com/TomBlackroad" target="_blank" rel="noopener noreferrer">TomBlackroad</a>. It is open source:
       <a href="https://github.com/TomBlackroad/fearsoflove" target="_blank" rel="noopener noreferrer">see the code</a> or suggest a scene.</p>
     <p class="small">Scene descriptions are written in our own words; titles and artwork belong to their owners. Posters are served by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
-    <p class="small" id="visits" hidden></p>
-    <p class="small">This site counts visits anonymously (no cookies, no personal data) with GoatCounter.</p>
+    <p class="small" id="stats-note" hidden>Anonymous usage stats are <strong id="stats-state">on</strong>: we count visits, countries and taps on cards with PostHog (EU), without cookies, without storing anything on your device and without keeping your IP address. <button type="button" class="linklike" id="stats-toggle">Turn off</button><span id="stats-dnt" hidden> Your browser asks not to be tracked, so nothing is sent.</span></p>
     <form method="dialog" class="dialog-actions"><button type="button" class="btn btn-link" id="about-howto">How to play</button><button class="btn btn-primary">Close</button></form>
   </dialog>
 

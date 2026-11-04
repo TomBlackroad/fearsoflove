@@ -120,14 +120,22 @@ async function loadJSON(path, optional) {
   }
 }
 
-/* Analytics: off unless configured in js/config.js. See docs/DATA_COLLECTION.md.
-   - GoatCounter: anonymous counts (visits, countries, and the click names below). No cookies.
-   - PostHog (optional): the same events with details (which card, time on card) for funnels and dashboards.
-     Runs in cookieless mode: no cookies, no stored ids, no personal profiles. */
+/* Analytics: PostHog only, off unless a key is set in js/config.js. See docs/ANALYTICS_SETUP.md.
+   - Nothing is stored on the device (persistence: 'memory'): no cookies, no local storage, no ids.
+   - No personal profiles. Country comes from PostHog's IP lookup; the IP itself is discarded
+     (project setting "Discard client IP data"). Time zone and language are sent as a backup.
+   - Skipped for people with Do Not Track / Global Privacy Control, and switchable off in About. */
 const phQueue = [];
-function track(name, props, opts) {
+function statsAllowed() {
+  const cfg = window.FOL_CONFIG || {};
+  if (!cfg.posthogKey) return false;
+  if (navigator.globalPrivacyControl === true || navigator.doNotTrack === '1' || window.doNotTrack === '1') return false;
+  return store('get', 'fol-stats') !== 'off';
+}
+
+function track(name, props) {
   try {
-    if (!(opts && opts.gc === false) && window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: 'event/' + name, title: name, event: true });
+    if (!statsAllowed()) return;
     const p = Object.assign({ room: !!state.room }, props || {});
     if (window.posthog && window.posthog.__loaded) window.posthog.capture(name, p); else if (phQueue.length < 200) phQueue.push([name, p]);
   } catch (e) { /* never break the game */ }
@@ -135,7 +143,8 @@ function track(name, props, opts) {
 
 function setupPostHog() {
   const cfg = window.FOL_CONFIG || {};
-  if (!cfg.posthogKey) { phQueue.length = 0; phQueue.push = () => 0; return; }
+  syncStatsNote();
+  if (!statsAllowed()) return;
   const host = (cfg.posthogHost || 'https://eu.i.posthog.com').replace(/\/$/, '');
   const sc = document.createElement('script');
   sc.async = true;
@@ -143,13 +152,57 @@ function setupPostHog() {
   sc.onload = () => {
     try {
       window.posthog.init(cfg.posthogKey, {
-        api_host: host, cookieless_mode: 'always', person_profiles: 'never',
-        autocapture: false, capture_pageview: true, disable_session_recording: true,
-        loaded: (ph) => { ph.__loaded = true; phQueue.splice(0).forEach(([n, p]) => ph.capture(n, p)); },
+        api_host: host,
+        persistence: 'memory',          // nothing written to the device
+        person_profiles: 'never',       // anonymous events only
+        autocapture: false,
+        capture_pageview: true,
+        capture_pageleave: true,        // gives visit length
+        disable_session_recording: true,
+        disable_surveys: true,
+        enable_heatmaps: false,         // no mouse/scroll tracking
+        capture_performance: false,     // no web-vitals measurements
+        capture_dead_clicks: false,
+        rageclick: false,
+        loaded: (ph) => {
+          let tz = '';
+          try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
+          const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+          ph.register({
+            tz, lang: (navigator.language || '').slice(0, 5),
+            screen: window.innerWidth < 600 ? 'phone' : window.innerWidth < 1024 ? 'tablet' : 'desktop',
+            installed: standalone,
+          });
+          ph.__loaded = true;
+          phQueue.splice(0).forEach(([n, p]) => ph.capture(n, p));
+        },
       });
     } catch (e) { /* ignore */ }
   };
   document.head.append(sc);
+}
+
+// "Anonymous stats: on/off" in the About box.
+function syncStatsNote() {
+  const cfg = window.FOL_CONFIG || {};
+  const row = $('#stats-note');
+  row.hidden = !cfg.posthogKey;
+  if (!cfg.posthogKey) return;
+  const blocked = navigator.globalPrivacyControl === true || navigator.doNotTrack === '1';
+  const on = statsAllowed();
+  $('#stats-state').textContent = on ? 'on' : 'off';
+  $('#stats-toggle').hidden = blocked;
+  $('#stats-toggle').textContent = on ? 'Turn off' : 'Turn on';
+  $('#stats-dnt').hidden = !blocked;
+}
+
+function setupStatsToggle() {
+  $('#stats-toggle').addEventListener('click', () => {
+    const on = statsAllowed();
+    store('set', 'fol-stats', on ? 'off' : 'on');
+    if (on && window.posthog && window.posthog.__loaded) { try { window.posthog.opt_out_capturing(); } catch (e) { /* ignore */ } }
+    if (!on) location.reload(); else syncStatsNote();
+  });
 }
 
 // Time each card is really on screen (paused while the tab is hidden), reported when you leave it.
@@ -162,7 +215,7 @@ function cardLeft() {
   if (!dwell.scene) return;
   if (dwell.since) dwell.acc += performance.now() - dwell.since;
   const sc = dwell.scene, m = state.movies.get(sc.movie);
-  track('card_seen', { scene: sc.id, title: m.id, type: m.type, depth: sc.depth, seconds: Math.round(Math.min(dwell.acc, 600000) / 1000), deeper: dwell.deep }, { gc: false });
+  track('card_seen', { scene: sc.id, title: m.id, type: m.type, depth: sc.depth, seconds: Math.round(Math.min(dwell.acc, 600000) / 1000), deeper: dwell.deep });
   dwell.scene = null;
 }
 document.addEventListener('visibilitychange', () => {
@@ -565,7 +618,7 @@ function react(key) {
   const v = voteOf(sc.id, clientId) === key ? '' : key; // tap again to undo
   const t = Date.now();
   setVote(sc.id, clientId, v, t);
-  if (v) track('react/' + v, { scene: sc.id }, { gc: true });
+  if (v) track('react/' + v, { scene: sc.id });
   if (state.room) send({ v: 1, k: 'vote', scene: sc.id, val: v, t, from: clientId, alias: myAlias() });
   renderReactions();
 }
@@ -1192,22 +1245,6 @@ function setupRemote() {
   window.addEventListener('pagehide', () => { if (state.room && state.room.bc) state.room.bc.postMessage({ bye: clientId }); });
 }
 
-/* ---------- anonymous visit counter (GoatCounter: no cookies, no personal data) ---------- */
-
-function setupCounter() {
-  const code = String((window.FOL_CONFIG || {}).goatcounter || '').trim();
-  if (!/^[a-z0-9-]+$/i.test(code)) return;
-  const sc = document.createElement('script');
-  sc.async = true;
-  sc.dataset.goatcounter = 'https://' + code + '.goatcounter.com/count';
-  sc.src = 'https://gc.zgo.at/count.js';
-  document.head.append(sc);
-  // show the total in About (works once "Allow adding visitor counts" is switched on in GoatCounter)
-  fetch('https://' + code + '.goatcounter.com/counter/TOTAL.json').then((r) => r.json()).then((d) => {
-    if (d && d.count) { const v = $('#visits'); v.textContent = 'Visits so far: ' + d.count; v.hidden = false; }
-  }).catch(() => {});
-}
-
 /* ---------- tutorial ---------- */
 
 const TUTORIAL = [
@@ -1261,7 +1298,7 @@ function setupTutorial() {
 /* ---------- init ---------- */
 
 async function init() {
-  setupCounter();
+  setupStatsToggle();
   setupPostHog();
   setupTutorial();
   setupRemote();

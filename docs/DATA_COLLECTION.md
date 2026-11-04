@@ -3,6 +3,8 @@
 Prices and limits were checked on 4 November 2026. Free tiers change, so re-check the linked pages before you rely on them.
 This is a practical plan, not legal advice. Have a lawyer look at stage 3 before you collect personal profiles.
 
+> **Update, November 2026:** stages 1 and 2 are done with **PostHog only** (no GoatCounter), with nothing stored on visitors' devices and the IP discarded after the country lookup. Setup steps: `docs/ANALYTICS_SETUP.md`. The event list below is what the game sends to PostHog.
+
 ## The short version
 
 | Stage | What you learn | Tool | Cost | Consent banner? | Effort |

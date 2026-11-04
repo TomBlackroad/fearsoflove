@@ -38,3 +38,4 @@ A couple ice-breaker. Each card: a famous movie or series moment, then "what wou
 - Analytics switches in js/config.js (GoatCounter, optional cookieless PostHog). Plan: docs/DATA_COLLECTION.md. Ideas: docs/IDEAS.md.
 - Rounds of 20 cards with reactions (loved it, made me think, fun, pass). At the end of each round: a live graph (who matched whom, everyone's reactions, top cards), save or share as PNG, and "Next round" once everybody is ready. Names (aliases) are asked when joining a room.
 - Invite button inside rooms (link + share buttons). "Movies" is the term everywhere (not "Film").
+- Analytics: PostHog only (memory persistence, IP discarded after country lookup, DNT/GPC respected, opt-out in About). `npm run stats` exports aggregates to logs/stats.json for a custom dashboard. SEO: preview image, structured data, sitemap. Setup: docs/ANALYTICS_SETUP.md.

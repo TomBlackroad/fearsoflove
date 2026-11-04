@@ -1,7 +1,7 @@
 {
   "name": "Fears of Love",
   "short_name": "Fears of Love",
-  "description": "Iconic movie and series moments. One question: what would you do?",
+  "description": "Iconic moments from movies, series and books. One question: what would you do?",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
