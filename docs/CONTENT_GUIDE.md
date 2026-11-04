@@ -44,9 +44,9 @@ Ideas from players currently come through GitHub issues or directly to the proje
 Send me (Claude) a list of titles or favorite moments in any shape, even just names. I will turn them into cards for you to review.
 
 ## Books
-- Same file format as films, with `"type": "book"` and an `"author"` field (required). The cover is drawn by the game (cream paper, title, author), so there is no image to fetch.
+- Same file format as movies, with `"type": "book"` and an `"author"` field (required). The cover is drawn by the game (cream paper, title, author), so there is no image to fetch.
 - Same rules: write about people, name the characters, keep a human reference, short quotes only.
-- Suggestions mix books, films and series through shared genres and mood tags, so reuse the existing tags.
+- Suggestions mix books, movies and series through shared genres and mood tags, so reuse the existing tags.
 - Books link to Open Library ("Find it") instead of streaming services.
 
 ## Genres (what the genre menu understands)

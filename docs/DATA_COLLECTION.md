@@ -26,7 +26,10 @@ Rule of thumb: **anonymous counts first, anonymous journeys second, personal dat
 | `event/deeper` | Follow-up questions opened |
 | `event/filter-type/…`, `event/filter-genre/…` | Filter choices (shows which genres people want) |
 | `event/room-dialog`, `room-copy`, `room-share`, `room-open`, `room-join` | The long-distance funnel |
-| `event/tutorial`, `event/deck-end` | Tutorial opened, deck finished |
+| `event/react/love`, `/deep`, `/fun`, `/pass` | Reactions to cards (the best quality signal you have today) |
+| `event/round-end`, `round-ready`, `round-save`, `round-share` | End of a round of 20, ready for the next one, round graph saved or shared |
+| `event/room-invite`, `event/room-share/…` | Invite opened inside a room, which app the link was sent with |
+| `event/tutorial` | Tutorial opened |
 
 **Setup.**
 1. Sign up at https://www.goatcounter.com and pick a code, e.g. `fearsoflove`.

@@ -10,7 +10,7 @@ const TRYSTERO_URL = 'https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
 const APP_ID = 'fearsoflove-tomblackroad';
 const $ = (sel) => document.querySelector(sel);
 
-const TYPE_LABEL = { movie: 'Film', tv: 'Series', book: 'Book' };
+const TYPE_LABEL = { movie: 'Movie', tv: 'Series', book: 'Book' };
 const TYPES = ['movie', 'tv', 'book'];
 const DEPTHS = [[1, 'Light'], [2, 'Personal'], [3, 'Deep']];
 
@@ -50,6 +50,8 @@ const state = {
   typeFilter: 'all', // all | movie | tv | book
   genre: 'all',      // all | one of GENRE_KEYS
   showDeep: false,
+  view: 'card',      // card | summary (end of a round)
+  votes: {},         // sceneId -> playerId -> { v: reaction, t: time }
   room: null,        // { id, cfg, clock, by, peers: Set, ... } while playing long distance
 };
 
@@ -280,7 +282,7 @@ function buildDeck(pool) {
 
 // Room play: the same deck for everybody with the same link.
 function buildRoomDeck(room) {
-  return spreadTitles(shuffle(poolFor(room.cfg), seededRandom(room.id + '/' + (room.round || 0))));
+  return spreadTitles(shuffle(poolFor(room.cfg), seededRandom(room.id + '/' + (room.pass || 0))));
 }
 
 function markSeen(id) {
@@ -295,9 +297,10 @@ function newGame() {
   state.deck = state.room ? buildRoomDeck(state.room) : buildDeck(poolFor(localCfg()));
   state.index = 0;
   state.showDeep = false;
+  state.view = 'card';
   show('play');
   if (!state.deck.length) {
-    $('#card').hidden = true; $('#related').hidden = true; $('#controls').hidden = true;
+    $('#card').hidden = true; $('#related').hidden = true; $('#react').hidden = true; $('#controls').hidden = true;
     $('#progress').textContent = '0 cards';
     return;
   }
@@ -311,9 +314,10 @@ function renderCard() {
   const movie = state.movies.get(scene.movie);
   $('#card').hidden = false;
   $('#controls').hidden = false;
-  $('#progress').textContent = (state.index + 1) + ' / ' + state.deck.length;
-  if (state.room) $('#room-summary').textContent = 'Card ' + (state.index + 1) + ' of ' + state.deck.length + ' · ' + describeCfg(state.room.cfg);
-  $('#card-meta').textContent = TYPE_LABEL[movie.type] || 'Film';
+  const rd = roundOf(state.index), inRound = state.index - roundStart(rd) + 1, size = roundEnd(rd) - roundStart(rd) + 1;
+  $('#progress').textContent = 'Round ' + (rd + 1) + ' · ' + inRound + ' / ' + size;
+  if (state.room) $('#room-summary').textContent = 'Round ' + (rd + 1) + ' · card ' + inRound + ' of ' + size + ' · ' + describeCfg(state.room.cfg);
+  $('#card-meta').textContent = TYPE_LABEL[movie.type] || 'Movie';
   $('#card-title').textContent = movie.title;
   $('#card-sub').textContent = (movie.author ? movie.author + ' · ' : '') + movie.year + ' · ' + movie.genres.join(', ');
   const wiki = $('#card-wiki');
@@ -333,11 +337,12 @@ function renderCard() {
   list.hidden = !state.showDeep;
   $('#btn-deep').setAttribute('aria-expanded', String(state.showDeep));
 
+  renderReactions();
   renderRelated(movie);
   if (!dwell.scene || dwell.scene.id !== scene.id) cardShown(scene);
   markSeen(scene.id);
   syncHowto();
-  $('#btn-next').textContent = state.index === state.deck.length - 1 ? 'Finish' : 'Next card';
+  $('#btn-next').textContent = state.index === roundEnd(roundOf(state.index)) ? 'See the round' : 'Next card';
   $('#btn-prev').disabled = state.index === 0;
 }
 
@@ -409,6 +414,7 @@ function goTo(idx, opts = {}) {
   if (idx < 0 || idx >= state.deck.length) return;
   state.index = idx;
   state.showDeep = false;
+  state.view = 'card';
   show('play');
   renderCard(opts.dir);
   if (opts.dir) animateIn(opts.dir);
@@ -434,7 +440,7 @@ function jumpToTitle(id) {
 }
 
 function next() {
-  if (state.index >= state.deck.length - 1) { endGame(); return; }
+  if (state.index >= roundEnd(roundOf(state.index))) { openSummary(); return; }
   goTo(state.index + 1, { dir: 'next' });
 }
 
@@ -448,14 +454,6 @@ function reveal() { // toggle the follow-up questions
   $('#btn-deep').setAttribute('aria-expanded', String(state.showDeep));
   if (state.showDeep) { dwell.deep = true; track('deeper'); }
   broadcast();
-}
-
-function endGame() {
-  $('#end-text').textContent = 'You went through ' + state.deck.length + ' scenes together. Which one would you watch, or read, again?';
-  $('#btn-again').textContent = state.room ? 'Start this deck again' : 'Shuffle and play again';
-  cardLeft();
-  track('deck-end', { cards: state.deck.length });
-  show('end');
 }
 
 function animateIn(dir) {
@@ -506,6 +504,367 @@ function setupSwipe() {
   card.addEventListener('touchcancel', end);
 }
 
+/* ---------- rounds, reactions and the round graph ---------- */
+
+const ROUND = 20;
+const REACTIONS = [
+  ['love', '❤️', 'Loved it', '#e0607e'],
+  ['deep', '🔥', 'Made me think', '#e0a458'],
+  ['fun', '😂', 'Fun', '#7cc6a4'],
+  ['pass', '🙈', 'Pass', '#8a7f86'],
+];
+const PALETTE = ['#e0a458', '#e0607e', '#7cc6a4', '#8fb3ff', '#c792ea', '#f2c14e', '#5ec2c7', '#ff9a76'];
+
+const roundOf = (idx) => Math.floor(idx / ROUND);
+const roundStart = (r) => r * ROUND;
+const roundEnd = (r) => Math.min(r * ROUND + ROUND - 1, state.deck.length - 1);
+const lastRound = () => roundOf(Math.max(state.deck.length - 1, 0));
+
+function myAlias() { return (store('get', 'fol-alias') || '').trim(); }
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+function colorFor(id) { let h = 0; for (const ch of id) h = (h * 33 + ch.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; }
+
+// Everyone currently in the game, you first.
+function roster() {
+  const r = state.room;
+  const me = { id: clientId, alias: myAlias() || 'You', me: true };
+  if (!r) return [me];
+  const ids = new Set([...r.tabs.keys(), ...r.peers.values()]);
+  ids.delete(clientId);
+  const others = Array.from(ids).sort().map((id) => {
+    const m = r.members.get(id);
+    return { id, alias: (m && m.alias) || (id.startsWith('peer:') ? 'Joining…' : 'Guest ' + id.slice(0, 3).toUpperCase()), pending: id.startsWith('peer:') };
+  });
+  return [me].concat(others);
+}
+
+function noteMember(id, alias) {
+  const r = state.room;
+  if (!r || !id || id === clientId) return;
+  const m = r.members.get(id) || {};
+  if (alias !== undefined && alias !== m.alias) { m.alias = alias; r.members.set(id, m); if (state.view === 'summary') renderSummary(); }
+  else r.members.set(id, m);
+}
+
+// votes[sceneId][playerId] = { v: reaction or '', t: time }
+function setVote(sceneId, player, v, t) {
+  const box = state.votes[sceneId] || (state.votes[sceneId] = {});
+  const cur = box[player];
+  if (cur && cur.t >= t) return false;
+  box[player] = { v, t };
+  return true;
+}
+
+function voteOf(sceneId, player) {
+  const x = state.votes[sceneId] && state.votes[sceneId][player];
+  return x && x.v ? x.v : '';
+}
+
+function react(key) {
+  const sc = state.deck[state.index];
+  const v = voteOf(sc.id, clientId) === key ? '' : key; // tap again to undo
+  const t = Date.now();
+  setVote(sc.id, clientId, v, t);
+  if (v) track('react/' + v, { scene: sc.id }, { gc: true });
+  if (state.room) send({ v: 1, k: 'vote', scene: sc.id, val: v, t, from: clientId, alias: myAlias() });
+  renderReactions();
+}
+
+function renderReactions() {
+  const sc = state.deck[state.index];
+  if (!sc) return;
+  const row = $('#react-row');
+  row.textContent = '';
+  const mine = voteOf(sc.id, clientId);
+  REACTIONS.forEach(([key, emoji, label]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'react-btn';
+    b.setAttribute('aria-pressed', String(mine === key));
+    b.innerHTML = '<span class="react-emoji" aria-hidden="true">' + emoji + '</span><span>' + label + '</span>';
+    b.addEventListener('click', () => react(key));
+    row.append(b);
+  });
+  $('#react').hidden = false;
+  const people = roster().filter((p) => !p.pending);
+  const done = people.filter((p) => voteOf(sc.id, p.id)).length;
+  $('#react-count').textContent = state.room && people.length > 1 ? done + ' of ' + people.length + ' reacted' : '';
+}
+
+/* --- summary screen --- */
+
+function openSummary(opts = {}) {
+  state.view = 'summary';
+  cardLeft();
+  show('round');
+  renderSummary(true);
+  if (!opts.remote) broadcast();
+  track('round-end', { round: roundOf(state.index) + 1 });
+}
+
+function backToCards() {
+  state.view = 'card';
+  show('play');
+  renderCard();
+  broadcast();
+}
+
+function roundData(rd) {
+  const scenes = state.deck.slice(roundStart(rd), roundEnd(rd) + 1);
+  const people = roster().filter((p) => !p.pending);
+  const counts = {};
+  people.forEach((p) => { counts[p.id] = {}; REACTIONS.forEach(([k]) => { counts[p.id][k] = 0; }); });
+  scenes.forEach((sc) => people.forEach((p) => { const v = voteOf(sc.id, p.id); if (v) counts[p.id][v] += 1; }));
+  const pairs = [];
+  for (let i = 0; i < people.length; i++) for (let j = i + 1; j < people.length; j++) {
+    let both = 0, same = 0;
+    scenes.forEach((sc) => { const a = voteOf(sc.id, people[i].id), b = voteOf(sc.id, people[j].id); if (a && b) { both++; if (a === b) same++; } });
+    pairs.push({ a: i, b: j, both, match: both ? same / both : null });
+  }
+  const top = scenes.map((sc) => {
+    const tally = {};
+    people.forEach((p) => { const v = voteOf(sc.id, p.id); if (v) tally[v] = (tally[v] || 0) + 1; });
+    const score = 2 * (tally.love || 0) + 2 * (tally.deep || 0) + (tally.fun || 0) - (tally.pass || 0);
+    return { sc, tally, score };
+  }).filter((x) => x.score > 0).sort((x, y) => y.score - x.score).slice(0, 3);
+  return { scenes, people, counts, pairs, top };
+}
+
+// The round graph as SVG: who matched whom (lines), and each player's reactions (bars).
+function graphSVG(rd, d, width) {
+  const W = Math.round(Math.max(320, Math.min(640, width || 640)));
+  const narrow = W < 520;
+  const netH = d.people.length > 1 ? (narrow ? 290 : 300) : 0, barTop = netH ? 70 + netH : 96, rowH = 40;
+  const legendRows = narrow ? 2 : 1;
+  const H = barTop + d.people.length * rowH + 40 + legendRows * 22;
+  const cx = W / 2, cy = 70 + netH / 2;
+  const n = d.people.length;
+  const pos = d.people.map((p, i) => {
+    if (n === 2) return { x: cx + (i ? 1 : -1) * Math.min(130, W * 0.3), y: cy };
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / n, R = narrow ? (n > 5 ? 112 : 104) : (n > 5 ? 120 : 105);
+    return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
+  });
+  const color = (p) => (p.me ? '#f6ede4' : colorFor(p.id));
+  const name = (p) => (p.me ? (myAlias() || 'You') : p.alias);
+  const favorite = (p) => { const c = d.counts[p.id]; const best = REACTIONS.filter(([k]) => c[k]).sort((x, y) => c[y[0]] - c[x[0]])[0]; return best ? best[1] : ''; };
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">';
+  s += '<rect width="' + W + '" height="' + H + '" rx="22" fill="#1f1016"/>';
+  s += '<text x="32" y="44" fill="#e0a458" font-size="13" letter-spacing="2.5">FEARS OF LOVE · ROUND ' + (rd + 1) + '</text>';
+  s += '<text x="' + (W - 32) + '" y="44" fill="#b9a79b" font-size="13" text-anchor="end">' + d.scenes.length + ' cards' + (narrow ? '' : ' · ' + n + (n === 1 ? ' player' : ' players')) + '</text>';
+  if (n > 1) {
+    d.pairs.forEach((pr, i) => {
+      const A = pos[pr.a], B = pos[pr.b];
+      const m = pr.match;
+      const w = m === null ? 1.5 : 2 + 12 * m;
+      s += '<line class="g-edge" style="--d:' + (0.15 + i * 0.08) + 's" x1="' + A.x + '" y1="' + A.y + '" x2="' + B.x + '" y2="' + B.y + '" stroke="#e0a458" stroke-opacity="' + (m === null ? 0.3 : 0.35 + 0.55 * m) + '" stroke-width="' + w + '" stroke-linecap="round"' + (m === null ? ' stroke-dasharray="4 6"' : '') + '/>';
+    });
+    d.pairs.forEach((pr) => {
+      if (pr.match === null) return;
+      const A = pos[pr.a], B = pos[pr.b];
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      const label = Math.round(pr.match * 100) + (narrow ? '%' : '% match');
+      const lw = narrow ? 46 : 88;
+      s += '<g class="g-label"><rect x="' + (mx - lw / 2) + '" y="' + (my - 12) + '" width="' + lw + '" height="24" rx="12" fill="#2a1820" stroke="#4a2d38"/>';
+      s += '<text x="' + mx + '" y="' + (my + 4.5) + '" fill="#f6ede4" font-size="12" font-weight="600" text-anchor="middle">' + label + '</text></g>';
+    });
+    d.people.forEach((p, i) => {
+      const P = pos[i];
+      const initials = esc(name(p).replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+      s += '<g class="g-node" style="--d:' + (i * 0.1) + 's">';
+      s += '<circle cx="' + P.x + '" cy="' + P.y + '" r="31" fill="' + color(p) + '" stroke="#14090d" stroke-width="4"/>';
+      s += '<text x="' + P.x + '" y="' + (P.y + 6) + '" fill="#14090d" font-size="17" font-weight="700" text-anchor="middle">' + initials + '</text>';
+      const fav = favorite(p);
+      if (fav) s += '<text x="' + (P.x + 24) + '" y="' + (P.y - 18) + '" font-size="18" text-anchor="middle">' + fav + '</text>';
+      s += '<text x="' + P.x + '" y="' + (P.y + 52) + '" fill="#f6ede4" font-size="14" font-weight="600" text-anchor="middle">' + esc(name(p)) + '</text>';
+      s += '</g>';
+    });
+  }
+  // reaction bars
+  const x0 = narrow ? 104 : 150, x1 = W - (narrow ? 24 : 40), maxN = Math.max(d.scenes.length, 1);
+  s += '<text x="32" y="' + (barTop - 14) + '" fill="#b9a79b" font-size="12" letter-spacing="1.5">REACTIONS THIS ROUND</text>';
+  d.people.forEach((p, i) => {
+    const y = barTop + i * rowH;
+    s += '<text x="32" y="' + (y + 19) + '" fill="' + (n > 1 ? color(p) : '#f6ede4') + '" font-size="14" font-weight="600">' + esc(name(p).slice(0, narrow ? 9 : 14)) + '</text>';
+    s += '<rect x="' + x0 + '" y="' + (y + 4) + '" width="' + (x1 - x0) + '" height="22" rx="6" fill="#2a1820"/>';
+    let x = x0;
+    REACTIONS.forEach(([k, emoji, , col]) => {
+      const c = d.counts[p.id][k];
+      if (!c) return;
+      const w = ((x1 - x0) * c) / maxN;
+      s += '<rect class="g-bar" style="--d:' + (0.3 + i * 0.1) + 's" x="' + x + '" y="' + (y + 4) + '" width="' + w + '" height="22" fill="' + col + '"/>';
+      if (w > 34) s += '<text x="' + (x + w / 2) + '" y="' + (y + 20) + '" font-size="12" text-anchor="middle" fill="#14090d" font-weight="700">' + emoji + ' ' + c + '</text>';
+      x += w;
+    });
+  });
+  // legend
+  REACTIONS.forEach(([, emoji, label, col], i) => {
+    const per = narrow ? 2 : 4;
+    const lx = 32 + (i % per) * ((W - 64) / per);
+    const ly = H - 26 - (legendRows - 1 - Math.floor(i / per)) * 22;
+    s += '<rect x="' + lx + '" y="' + (ly - 10) + '" width="10" height="10" rx="2" fill="' + col + '"/>';
+    s += '<text x="' + (lx + 16) + '" y="' + ly + '" fill="#b9a79b" font-size="12">' + emoji + ' ' + label + '</text>';
+  });
+  return s + '</svg>';
+}
+
+let animatedRound = -1;
+function renderSummary(fresh) {
+  const rd = roundOf(state.index);
+  const d = roundData(rd);
+  const final = rd >= lastRound();
+  $('#round-eyebrow').textContent = state.room ? 'Long distance · round ' + (rd + 1) : 'Round ' + (rd + 1) + ' of ' + (lastRound() + 1);
+  $('#round-title').textContent = final ? 'That was the last round' : 'Round ' + (rd + 1) + ' done';
+  const anyVotes = d.people.some((p) => REACTIONS.some(([k]) => d.counts[p.id][k]));
+  $('#round-sub').textContent = anyVotes
+    ? (d.people.length > 1 ? 'Here is how your reactions lined up. The % on each line is how often two of you reacted the same way to the same card.' : 'Here is how this round felt for you.')
+    : 'Nobody reacted to the cards yet. Tap ← to go back and react, then come back here.';
+  const wrap = $('#round-graph');
+  wrap.innerHTML = graphSVG(rd, d, wrap.clientWidth || 640);
+  wrap.classList.toggle('animate', !!fresh && animatedRound !== rd);
+  if (fresh) animatedRound = rd;
+  if (!wrap.dataset.resizeHooked) { wrap.dataset.resizeHooked = '1'; let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (state.view === 'summary') renderSummary(); }, 150); }); }
+  $('#graph-note').textContent = d.people.length > 1 ? 'Updates live as people react.' : '';
+
+  const top = $('#top-cards');
+  top.textContent = '';
+  d.top.forEach(({ sc, tally }) => {
+    const m = state.movies.get(sc.movie);
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'top-card';
+    btn.innerHTML = '<span class="top-title">' + esc(m.title) + '</span><span class="top-prompt">' + esc(sc.prompt) + '</span><span class="top-tally">' + REACTIONS.filter(([k]) => tally[k]).map(([k, e]) => e + ' ' + tally[k]).join('  ') + '</span>';
+    btn.addEventListener('click', () => { const i = state.deck.indexOf(sc); if (i > -1) { state.view = 'card'; goTo(i); } });
+    li.append(btn);
+    top.append(li);
+  });
+  $('#top-title').hidden = !d.top.length;
+
+  // ready-up
+  const r = state.room;
+  const ready = r ? (r.ready[rd] || new Set()) : new Set();
+  const people = roster();
+  const rr = $('#ready-row');
+  rr.textContent = '';
+  if (r && people.length > 1) {
+    people.forEach((p) => {
+      const c = document.createElement('span');
+      c.className = 'ready-chip' + (ready.has(p.id) ? ' on' : '');
+      c.textContent = (ready.has(p.id) ? '✓ ' : '… ') + (p.me ? (myAlias() || 'You') : p.alias);
+      rr.append(c);
+    });
+  }
+  const waiting = people.filter((p) => !ready.has(p.id)).length;
+  const btn = $('#round-next');
+  if (r && ready.has(clientId) && waiting) { btn.textContent = 'Waiting for ' + waiting + (waiting === 1 ? ' more…' : ' more…'); btn.disabled = true; }
+  else { btn.textContent = final ? 'Play another deck' : 'Next round'; btn.disabled = false; }
+}
+
+function nextRound() {
+  const rd = roundOf(state.index);
+  const r = state.room;
+  if (!r) { advanceRound(rd); return; }
+  (r.ready[rd] || (r.ready[rd] = new Set())).add(clientId);
+  send({ v: 1, k: 'ready', round: rd, pass: r.pass, from: clientId, alias: myAlias() });
+  track('round-ready', { round: rd + 1 });
+  checkReady(rd);
+  renderSummary();
+}
+
+// Everyone present has tapped "Next round": every player moves on by themselves, so nobody waits for a leader.
+function checkReady(rd) {
+  const r = state.room;
+  if (!r || state.view !== 'summary' || roundOf(state.index) !== rd) return;
+  const ready = r.ready[rd] || new Set();
+  if (roster().every((p) => ready.has(p.id))) advanceRound(rd);
+  else renderSummary();
+}
+
+function advanceRound(rd) {
+  state.view = 'card';
+  if (rd >= lastRound()) {
+    if (state.room) { state.room.pass += 1; state.room.ready = {}; state.deck = buildRoomDeck(state.room); goTo(0, { remote: true }); }
+    else newGame();
+    return;
+  }
+  goTo(roundStart(rd + 1), { dir: 'next', remote: true });
+}
+
+async function graphPNG() {
+  const rd = roundOf(state.index);
+  const holder = document.createElement('div');
+  holder.innerHTML = graphSVG(rd, roundData(rd), 640); // saved images always use the large layout
+  const svg = holder.firstChild;
+  const xml = new XMLSerializer().serializeToString(svg);
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+  await img.decode();
+  const scale = 2, w = Number(svg.getAttribute('width')), h = Number(svg.getAttribute('height'));
+  const canvas = document.createElement('canvas');
+  canvas.width = w * scale; canvas.height = h * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  ctx.drawImage(img, 0, 0, w, h);
+  return new Promise((res) => canvas.toBlob(res, 'image/png'));
+}
+
+async function saveGraph(share) {
+  const status = $('#round-status');
+  try {
+    const blob = await graphPNG();
+    if (!blob) return;
+    const name = 'fears-of-love-round-' + (roundOf(state.index) + 1) + '.png';
+    const file = new File([blob], name, { type: 'image/png' });
+    if (share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Fears of Love', text: 'Our round of Fears of Love' });
+      track('round-share');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    status.textContent = share ? 'Sharing images is not available here, so the image was saved instead.' : 'Image saved.';
+    track('round-save');
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    status.textContent = 'Could not create the image on this device.';
+  }
+}
+
+function setupRounds() {
+  $('#round-next').addEventListener('click', nextRound);
+  $('#round-back').addEventListener('click', backToCards);
+  $('#round-save').addEventListener('click', () => saveGraph(false));
+  $('#round-share').addEventListener('click', () => saveGraph(true));
+}
+
+/* --- names --- */
+
+function askAlias() {
+  return new Promise((resolve) => {
+    const dlg = $('#alias-dlg');
+    const input = $('#alias-input');
+    input.value = myAlias();
+    const done = (v) => {
+      if (v !== null) store('set', 'fol-alias', v.trim().slice(0, 20));
+      store('set', 'fol-alias-asked', '1');
+      dlg.close();
+      resolve();
+    };
+    $('#alias-form').onsubmit = (e) => { e.preventDefault(); done(input.value); };
+    $('#alias-skip').onclick = () => done(null);
+    dlg.showModal();
+    input.focus();
+  });
+}
+
+function announceAlias() {
+  if (state.room) send({ v: 1, k: 'hi', from: clientId, alias: myAlias() });
+  if (state.view === 'summary') renderSummary();
+}
+
 /* ---------- long distance rooms ---------- */
 
 // Link format: #room=<id>&t=movie.tv.book&g=romance.comedy (omitted = all genres)&d=1.2.3
@@ -528,7 +887,7 @@ function roomLink(id, cfg) {
 }
 
 function describeCfg(cfg) {
-  const t = cfg.types.length === 3 ? 'Films, series and books' : cfg.types.map((x) => ({ movie: 'Films', tv: 'Series', book: 'Books' })[x]).join(' and ');
+  const t = cfg.types.length === 3 ? 'Movies, series and books' : cfg.types.map((x) => ({ movie: 'Movies', tv: 'Series', book: 'Books' })[x]).join(' and ');
   const g = cfg.genres.length >= GENRE_KEYS.length ? 'all genres' : cfg.genres.map((k) => GENRES.find((x) => x[0] === k)[1]).join(', ');
   const d = cfg.depths.length === 3 ? 'all depths' : cfg.depths.map((n) => DEPTHS[n - 1][1].toLowerCase()).join(' + ');
   return t + ' · ' + g + ' · ' + d;
@@ -537,7 +896,7 @@ function describeCfg(cfg) {
 function enterRoom(room) {
   if (state.room && state.room.id === room.id) return;
   if (state.room) leaveRoom(true);
-  state.room = Object.assign(room, { clock: 0, by: '', round: 0, peers: new Map(), tabs: new Map(), net: null, bc: null });
+  state.room = Object.assign(room, { clock: 0, by: '', pass: 0, peers: new Map(), tabs: new Map(), members: new Map(), ready: {}, net: null, bc: null });
   document.body.classList.add('in-room');
   $('#filters').hidden = true;
   $('#room-summary').hidden = false;
@@ -545,8 +904,10 @@ function enterRoom(room) {
   $('#room-pill').hidden = false;
   updatePill();
   track('room-join');
+  state.votes = {};
   newGame();
   connectRoom(state.room);
+  if (!store('get', 'fol-alias-asked')) askAlias().then(announceAlias);
 }
 
 function leaveRoom(silent) {
@@ -556,6 +917,7 @@ function leaveRoom(silent) {
   try { if (r.bc) { r.bc.postMessage({ bye: clientId }); r.bc.close(); } } catch (e) { /* ignore */ }
   clearInterval(r.timer);
   state.room = null;
+  state.votes = {};
   document.body.classList.remove('in-room');
   $('#filters').hidden = false;
   $('#room-summary').hidden = true;
@@ -578,7 +940,15 @@ function updatePill() {
 function currentMsg() {
   const r = state.room;
   const sc = state.deck[state.index];
-  return { v: 1, idx: state.index, scene: sc ? sc.id : '', deep: state.showDeep, round: r.round, c: r.clock, by: r.by, from: clientId };
+  return { v: 1, k: 'nav', idx: state.index, scene: sc ? sc.id : '', deep: state.showDeep, view: state.view, pass: r.pass, c: r.clock, by: r.by, from: clientId, alias: myAlias() };
+}
+
+// Everything a newcomer needs besides the current card: all reactions and who is ready.
+function syncMsg() {
+  const r = state.room;
+  const ready = {};
+  Object.keys(r.ready).forEach((k) => { ready[k] = Array.from(r.ready[k]); });
+  return { v: 1, k: 'sync', votes: state.votes, ready, pass: r.pass, from: clientId, alias: myAlias() };
 }
 
 // Called after every local change (card, follow-ups).
@@ -601,6 +971,25 @@ function send(msg, target) {
 function receive(m, peerId) {
   const r = state.room;
   if (!r || !m || m.v !== 1) return;
+  if (m.from) noteMember(m.from, m.alias);
+  if (m.k === 'hi') { updatePill(); renderReactions(); return; }
+  if (m.k === 'vote') {
+    if (setVote(m.scene, m.from, m.val || '', m.t || 0)) { if (state.view === 'summary') renderSummary(); else renderReactions(); }
+    return;
+  }
+  if (m.k === 'sync') {
+    let changed = false;
+    Object.entries(m.votes || {}).forEach(([sid, box]) => Object.entries(box || {}).forEach(([pid, x]) => { if (x && setVote(sid, pid, x.v || '', x.t || 0)) changed = true; }));
+    if (m.pass === r.pass) Object.entries(m.ready || {}).forEach(([rd, ids]) => { const set = r.ready[rd] || (r.ready[rd] = new Set()); ids.forEach((id) => set.add(id)); });
+    if (state.view === 'summary') checkReady(roundOf(state.index)); else if (changed) renderReactions();
+    return;
+  }
+  if (m.k === 'ready') {
+    if (m.pass !== r.pass) return;
+    (r.ready[m.round] || (r.ready[m.round] = new Set())).add(m.from);
+    checkReady(m.round);
+    return;
+  }
   const newer = m.c > r.clock || (m.c === r.clock && m.by > r.by);
   if (!newer) {
     if (m.c < r.clock && peerId) send(currentMsg(), peerId); // they are behind: catch them up
@@ -608,7 +997,7 @@ function receive(m, peerId) {
   }
   r.clock = m.c;
   r.by = m.by;
-  if (m.round !== r.round) { r.round = m.round; state.deck = buildRoomDeck(r); }
+  if (m.pass !== undefined && m.pass !== r.pass) { r.pass = m.pass; r.ready = {}; state.deck = buildRoomDeck(r); }
   let idx = m.idx;
   const sc = state.scenes.find((s) => s.id === m.scene);
   if (sc && (!state.deck[idx] || state.deck[idx].id !== sc.id)) {
@@ -620,6 +1009,8 @@ function receive(m, peerId) {
   const dir = idx > state.index ? 'next' : idx < state.index ? 'back' : null;
   state.index = Math.max(0, Math.min(idx, state.deck.length - 1));
   state.showDeep = !!m.deep;
+  if (m.view === 'summary') { state.view = 'summary'; cardLeft(); show('round'); renderSummary(true); return; }
+  state.view = 'card';
   show('play');
   renderCard();
   if (dir) animateIn(dir);
@@ -631,8 +1022,8 @@ async function connectRoom(r) {
     r.bc = new BroadcastChannel('fol-room-' + r.id);
     r.bc.onmessage = (e) => {
       const d = e.data || {};
-      if (d.hello) { r.tabs.set(d.hello, Date.now()); updatePill(); if (!d.reply) r.bc.postMessage({ hello: clientId, reply: true }); r.bc.postMessage(currentMsg()); return; }
-      if (d.bye) { r.tabs.delete(d.bye); updatePill(); return; }
+      if (d.hello) { const isNew = !r.tabs.has(d.hello); r.tabs.set(d.hello, Date.now()); updatePill(); if (!d.reply) r.bc.postMessage({ hello: clientId, reply: true }); if (isNew) { r.bc.postMessage(currentMsg()); r.bc.postMessage(syncMsg()); } return; }
+      if (d.bye) { r.tabs.delete(d.bye); updatePill(); renderReactions(); if (state.view === 'summary') checkReady(roundOf(state.index)); return; }
       if (d.from) { r.tabs.set(d.from, Date.now()); updatePill(); }
       receive(d, null);
     };
@@ -655,11 +1046,11 @@ async function connectRoom(r) {
     r.action = net.makeAction('state');
     r.action.onMessage = (d, meta) => {
       const peerId = meta && meta.peerId;
-      if (peerId && d && d.from && r.peers.get(peerId) !== d.from) { r.peers.set(peerId, d.from); updatePill(); }
+      if (peerId && d && d.from && r.peers.get(peerId) !== d.from) { r.peers.set(peerId, d.from); updatePill(); if (state.view === 'summary') renderSummary(); }
       receive(d, peerId);
     };
-    net.onPeerJoin = (peerId) => { r.peers.set(peerId, 'peer:' + peerId); updatePill(); send(currentMsg(), peerId); };
-    net.onPeerLeave = (peerId) => { r.peers.delete(peerId); updatePill(); };
+    net.onPeerJoin = (peerId) => { r.peers.set(peerId, 'peer:' + peerId); updatePill(); send(currentMsg(), peerId); send(syncMsg(), peerId); };
+    net.onPeerLeave = (peerId) => { r.peers.delete(peerId); updatePill(); renderReactions(); if (state.view === 'summary') checkReady(roundOf(state.index)); };
     r.status = 'Waiting for others…';
   } catch (err) {
     console.warn('Live sync unavailable', err);
@@ -703,7 +1094,7 @@ function renderRemote() {
     presets.append(b);
   });
   const types = $('#rm-types'); types.textContent = '';
-  TYPES.forEach((t) => chip(types, t, { movie: 'Films', tv: 'Series', book: 'Books' }[t], cfg.types.includes(t), (on) => { toggle(cfg.types, t, on); rerender(); }));
+  TYPES.forEach((t) => chip(types, t, { movie: 'Movies', tv: 'Series', book: 'Books' }[t], cfg.types.includes(t), (on) => { toggle(cfg.types, t, on); rerender(); }));
   const genres = $('#rm-genres'); genres.textContent = '';
   GENRES.forEach(([k, label]) => chip(genres, k, label, cfg.genres.includes(k), (on) => { toggle(cfg.genres, k, on); rerender(); }));
   const depth = $('#rm-depth'); depth.textContent = '';
@@ -721,15 +1112,26 @@ function renderRemote() {
   $('#rm-status').textContent = '';
 }
 
-function openRemote() {
-  draft.id = randomId(8);
+// invite = true: you are in a room, so show its link to send to more people.
+function openRemote(invite) {
+  const inRoom = !!state.room && invite !== false;
+  draft.invite = inRoom;
+  draft.id = inRoom ? state.room.id : randomId(8);
   draft.cfg = state.room
     ? { types: state.room.cfg.types.slice(), genres: state.room.cfg.genres.slice(), depths: state.room.cfg.depths.slice() }
     : { types: localCfg().types.slice(), genres: state.genre === 'all' ? GENRE_KEYS.slice() : [state.genre], depths: [1, 2, 3] };
-  if (state.room) draft.id = state.room.id;
+  $('#remote-title').textContent = inRoom ? 'Invite more people' : 'Play long distance';
+  $('#remote-intro').textContent = inRoom
+    ? 'Send this link to anyone who should join. They land on the same card as everyone else.'
+    : 'Share one link. Everyone who opens it sees the same card, and when anyone changes card, the others follow. Works for two or more people.';
+  $('#rm-config').hidden = inRoom;
+  $('#rm-open').hidden = inRoom;
+  $('#rm-new-row').hidden = !inRoom;
+  $('#rm-alias-row').hidden = !state.room;
+  $('#rm-alias').value = myAlias();
   renderRemote();
-  $('#remote').showModal();
-  track('room-dialog');
+  if (!$('#remote').open) $('#remote').showModal();
+  track(inRoom ? 'room-invite' : 'room-dialog');
 }
 
 // Share the room link through the app people already use.
@@ -766,7 +1168,10 @@ async function copyText(text) {
 }
 
 function setupRemote() {
-  $('#btn-remote').addEventListener('click', openRemote);
+  $('#btn-remote').addEventListener('click', () => openRemote(true));
+  $('#room-invite').addEventListener('click', () => openRemote(true));
+  $('#rm-new').addEventListener('click', () => openRemote(false));
+  $('#rm-alias').addEventListener('change', (e) => { store('set', 'fol-alias', e.target.value.trim().slice(0, 20)); store('set', 'fol-alias-asked', '1'); announceAlias(); });
   $('#rm-close').addEventListener('click', () => $('#remote').close());
   $('#rm-genres-all').addEventListener('click', () => { draft.cfg.genres = GENRE_KEYS.slice(); renderRemote(); });
   $('#rm-genres-none').addEventListener('click', () => { draft.cfg.genres = []; renderRemote(); });
@@ -806,11 +1211,12 @@ function setupCounter() {
 /* ---------- tutorial ---------- */
 
 const TUTORIAL = [
-  ['Read the scene', 'Each card describes a moment from a film, a series or a book. Read it out loud to each other.'],
+  ['Read the scene', 'Each card describes a moment from a movie, a series or a book. Read it out loud to each other.'],
   ['Answer together', 'The question in the dotted box is about you, not the character. Take turns: what would you do? There are no wrong answers.'],
   ['Go deeper', 'Tap the little arrow under the question for follow-up questions when you want to dig further.'],
-  ['Pick what comes next', 'Under the card you get a film, a series and a book with a similar feel. Tap one to talk about it next, or use Next card. On a phone you can also swipe the card.'],
-  ['Far apart?', 'Tap the globe at the top to make a long distance link. Everyone who opens it sees the same card, and the deck moves for everyone.'],
+  ['Pick what comes next', 'Under the card you get a movie, a series and a book with a similar feel. Tap one to talk about it next, or use Next card. On a phone you can also swipe the card.'],
+  ['Rounds of 20', 'React to each card with a tap (loved it, made me think, fun, pass). Every 20 cards you get a graph of how your reactions matched, which you can save or share.'],
+  ['Far apart?', 'Tap the globe at the top to make a long distance link. Everyone who opens it sees the same card, and the deck moves for everyone. Tap Invite to send the link again.'],
 ];
 let tutStep = 0;
 
@@ -859,6 +1265,7 @@ async function init() {
   setupPostHog();
   setupTutorial();
   setupRemote();
+  setupRounds();
   setupSwipe();
   $('#btn-info').addEventListener('click', () => $('#about').showModal());
   try {
@@ -889,11 +1296,10 @@ async function init() {
   }));
   $('#btn-next').addEventListener('click', next);
   $('#btn-prev').addEventListener('click', back);
-  $('#btn-again').addEventListener('click', () => {
-    if (state.room) { state.room.round += 1; state.deck = buildRoomDeck(state.room); goTo(0); } else newGame();
-  });
   document.addEventListener('keydown', (e) => {
-    if (!$('#screen-play').classList.contains('is-active') || document.querySelector('dialog[open]')) return;
+    if (document.querySelector('dialog[open]')) return;
+    if ($('#screen-round').classList.contains('is-active')) { if (e.key === 'ArrowLeft') backToCards(); return; }
+    if (!$('#screen-play').classList.contains('is-active')) return;
     if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     if (e.key === 'ArrowRight') next();
     if (e.key === 'ArrowLeft') back();

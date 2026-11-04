@@ -15,7 +15,7 @@ Grouped by what they would do for the project. Stars mark a quick win (★) or a
 - **"Our watchlist"**: every title you both mark "want to see" is collected on one list you can share or copy.
 - **Compatibility round**: 10 cards with two-option answers ("I'd leave" or "I'd stay"); the end screen shows where you match and the one card worth talking about.
 - **Spice levels**: a flirty or 18+ deck behind an age check; a "family" deck for parents and kids.
-- **Themed decks**: Halloween horror, Valentine's, Christmas films, summer romance, "first dates only".
+- **Themed decks**: Halloween horror, Valentine's, Christmas movies, summer romance, "first dates only".
 - **Daily card**: the same card for everyone each day. A reason to come back, and good for social posts.
 
 ## Grow the audience

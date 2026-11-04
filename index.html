@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fears of Love: a movie-scene game for two</title>
-  <meta name="description" content="Iconic moments from films, series and books, one question: what would you do? An ice-breaker game for two.">
+  <meta name="description" content="Iconic moments from movies, series and books, one question: what would you do? An ice-breaker game for two.">
   <meta name="theme-color" content="#14090d">
   <meta property="og:title" content="Fears of Love">
-  <meta property="og:description" content="Iconic moments from films, series and books, one question: what would you do?">
+  <meta property="og:description" content="Iconic moments from movies, series and books, one question: what would you do?">
   <meta property="og:type" content="website">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
@@ -29,6 +29,7 @@
           <div class="room-pill" id="room-pill" hidden>
             <span class="room-dot" aria-hidden="true"></span>
             <span id="room-label">Long distance</span>
+            <button type="button" class="room-leave room-invite" id="room-invite">Invite</button>
             <button type="button" class="room-leave" id="room-leave">Leave</button>
           </div>
           <div class="head-actions">
@@ -73,6 +74,10 @@
           </button>
         </div>
       </article>
+      <section class="react" id="react" aria-labelledby="react-title" hidden>
+        <div class="react-head"><h4 id="react-title">How was this card for you?</h4><span class="react-count small" id="react-count"></span></div>
+        <div class="react-row" id="react-row"></div>
+      </section>
       <section class="related" id="related" aria-labelledby="related-title" hidden>
         <h4 id="related-title">Jump to something similar</h4>
         <div class="related-row" id="related-row"></div>
@@ -84,11 +89,23 @@
       </div>
     </section>
 
-    <section id="screen-end" class="screen" aria-labelledby="end-title">
-      <h2 id="end-title">That's the deck</h2>
-      <p class="lede" id="end-text"></p>
-      <div class="stack">
-        <button class="btn btn-primary" id="btn-again" type="button">Shuffle and play again</button>
+    <section id="screen-round" class="screen" aria-labelledby="round-title">
+      <p class="round-eyebrow" id="round-eyebrow"></p>
+      <h2 id="round-title"></h2>
+      <p class="small" id="round-sub"></p>
+      <div class="graph-wrap" id="round-graph"></div>
+      <p class="small graph-note" id="graph-note"></p>
+      <div class="graph-actions">
+        <button type="button" class="btn btn-ghost" id="round-save">Save image</button>
+        <button type="button" class="btn btn-ghost" id="round-share">Share</button>
+      </div>
+      <p class="small" id="round-status" role="status" aria-live="polite"></p>
+      <h3 class="round-h3" id="top-title">Cards that got you talking</h3>
+      <ol class="top-cards" id="top-cards"></ol>
+      <div class="ready-row" id="ready-row"></div>
+      <div class="round-controls">
+        <button class="btn-arrow" id="round-back" type="button" aria-label="Back to the last card">&#8592;</button>
+        <button class="btn btn-primary btn-next" id="round-next" type="button">Next round</button>
       </div>
     </section>
 
@@ -96,7 +113,7 @@
 
   <dialog id="about">
     <h2>About</h2>
-    <p><strong>Fears of Love</strong> is a free ice-breaker game for two (or more), built around moments from films, series and books.</p>
+    <p><strong>Fears of Love</strong> is a free ice-breaker game for two (or more), built around moments from movies, series and books.</p>
     <p>Developed by <a href="https://github.com/TomBlackroad" target="_blank" rel="noopener noreferrer">TomBlackroad</a>. It is open source:
       <a href="https://github.com/TomBlackroad/fearsoflove" target="_blank" rel="noopener noreferrer">see the code</a> or suggest a scene.</p>
     <p class="small">Scene descriptions are written in our own words; titles and artwork belong to their owners. Posters are served by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
@@ -116,9 +133,26 @@
     </div>
   </dialog>
 
+  <dialog id="alias-dlg" aria-labelledby="alias-title">
+    <form id="alias-form" method="dialog">
+      <h2 id="alias-title">What should the others call you?</h2>
+      <p class="small">Your name appears in the round graph. It stays on this device and in this game only.</p>
+      <input type="text" id="alias-input" maxlength="20" autocomplete="nickname" placeholder="e.g. Ana" required>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-link" id="alias-skip">Skip</button>
+        <button type="submit" class="btn btn-primary">Join</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="remote" aria-labelledby="remote-title">
     <h2 id="remote-title">Play long distance</h2>
-    <p class="small">Share one link. Everyone who opens it sees the same card, and when anyone changes card, the others follow. Works for two or more people.</p>
+    <p class="small" id="remote-intro">Share one link. Everyone who opens it sees the same card, and when anyone changes card, the others follow. Works for two or more people.</p>
+    <div class="rm-alias-row" id="rm-alias-row" hidden>
+      <label for="rm-alias">Your name in this game</label>
+      <input type="text" id="rm-alias" maxlength="20" autocomplete="nickname" placeholder="e.g. Ana">
+    </div>
+    <div id="rm-config">
     <div class="presets" id="presets" role="group" aria-label="Presets"></div>
     <fieldset>
       <legend>Content</legend>
@@ -133,6 +167,7 @@
       <div class="chips" id="rm-depth"></div>
     </fieldset>
     <p class="small" id="rm-count"></p>
+    </div>
     <div class="link-box">
       <input type="text" id="rm-link" readonly aria-label="Room link">
       <p class="share-label">Send it with</p>
@@ -148,6 +183,7 @@
       <button type="button" class="btn btn-primary rm-open-btn" id="rm-open">Open the room</button>
       <p class="small" id="rm-status" role="status" aria-live="polite"></p>
     </div>
+    <p class="small rm-new-row" id="rm-new-row" hidden><button type="button" class="linklike" id="rm-new">Start a different room instead</button></p>
     <div class="dialog-actions">
       <button type="button" class="btn btn-link" id="rm-close">Close</button>
     </div>

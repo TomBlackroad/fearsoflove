@@ -4,7 +4,7 @@
 
 Just open the link above, on your phone or computer. Nothing to install. (The files below are only for people who want to look under the hood or help build it.)
 
-An ice-breaker game for two (or more). Each card shows an iconic moment from a film, a series or a book and asks one question: **what would you do?**
+An ice-breaker game for two (or more). Each card shows an iconic moment from a movie, a series or a book and asks one question: **what would you do?**
 
 - 500+ cards, filters by type and genre, and a row of similar titles under each card to choose what comes next.
 - **Long distance**: tap the globe, pick a deck, share the link. Everyone who opens it sees the same card and moves through the deck together (peer to peer, no account needed).
@@ -25,7 +25,7 @@ The game is plain HTML, CSS and JavaScript (no build step), so GitHub Pages serv
 | Path | What it is |
 |---|---|
 | `index.html`, `css/`, `js/` | The game |
-| `data/movies.json` | Titles (id, year, genres, film or series) |
+| `data/movies.json` | Titles (id, year, genres, movie or series) |
 | `data/scenes.json` | The cards: scene, question, follow-ups |
 | `data/posters.json` | Poster paths from TMDB (generated, see `docs/POSTERS.md`) |
 | `data/legacy-scenarios.json` | The 35 cards of the original version, kept for reference |

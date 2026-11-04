@@ -1,6 +1,6 @@
 # Posters (free, via TMDB)
 
-We use [TMDB](https://www.themoviedb.org) for poster images: free for non-commercial projects, covers films and series, and serves images from its own CDN. We store only the poster path; the browser loads the image from TMDB. Nothing is re-hosted.
+We use [TMDB](https://www.themoviedb.org) for poster images: free for non-commercial projects, covers movies and series, and serves images from its own CDN. We store only the poster path; the browser loads the image from TMDB. Nothing is re-hosted.
 
 ## One-time setup (you, about 5 minutes)
 

@@ -1,7 +1,7 @@
 # Plan
 
 ## Product
-A couple ice-breaker. Each card: a famous film or series moment, then "what would you do?", then deeper follow-ups. English first; Spanish and French after testing.
+A couple ice-breaker. Each card: a famous movie or series moment, then "what would you do?", then deeper follow-ups. English first; Spanish and French after testing.
 
 ## Done
 - Repo cloned, restructured, GitHub Pages compatible
@@ -36,3 +36,5 @@ A couple ice-breaker. Each card: a famous film or series moment, then "what woul
 - Long-distance rooms: globe button, presets and checklists, a link to copy, share or open. Same seeded deck for everyone; card changes sync peer to peer (Trystero over Nostr relays, plus BroadcastChannel between tabs).
 - 514 cards, 148 titles (new: horror, crime, animation, musicals, international, K-drama, romantasy and more).
 - Analytics switches in js/config.js (GoatCounter, optional cookieless PostHog). Plan: docs/DATA_COLLECTION.md. Ideas: docs/IDEAS.md.
+- Rounds of 20 cards with reactions (loved it, made me think, fun, pass). At the end of each round: a live graph (who matched whom, everyone's reactions, top cards), save or share as PNG, and "Next round" once everybody is ready. Names (aliases) are asked when joining a room.
+- Invite button inside rooms (link + share buttons). "Movies" is the term everywhere (not "Film").
