@@ -5,7 +5,7 @@ Decision (November 2026): **PostHog only** (GoatCounter dropped). Expected traff
 How it is configured in the game (`js/app.js`, `setupPostHog`):
 - `persistence: 'memory'`: no cookies, nothing stored on the visitor's device. Each visit counts as a new anonymous visitor.
 - `person_profiles: 'never'`: anonymous events only, no profiles.
-- Country comes from PostHog's IP lookup, then the IP is thrown away (you switch that on in step A4). Time zone and language are sent too, as a backup.
+- Country and city come from PostHog's IP lookup, then the IP is thrown away (you switch that on in step A4). Time zone and language are sent too, as a backup.
 - Visitors with "Do Not Track" or "Global Privacy Control" are never counted. Anyone can switch stats off in the About box.
 - No autocapture and no session recordings. Only the events listed in `docs/DATA_COLLECTION.md`.
 
@@ -22,20 +22,28 @@ How it is configured in the game (`js/app.js`, `setupPostHog`):
    ```
 6. Commit, push, open the game, play 3 cards. In PostHog → Activity you should see `$pageview` and `card_seen` within a minute.
 
-Useful views in PostHog itself: Web analytics (visits, countries, devices, referrers, no setup), plus Insights you can pin to a dashboard: trend of `card_seen` per day, a funnel `room-dialog` → `room-open` → `room-join`, and a table of `react/love` by `scene`.
+Useful views in PostHog itself: Web analytics (visits, countries, devices, referrers, no setup), plus Insights you can pin to a dashboard: trend of `card_seen` per day, a funnel `room-dialog` → `room-open` → `room-join`, and a table of `react/fire` by `scene`.
 
-## B. Your personal dashboard (5 minutes, then whenever you want fresh numbers)
+## B. Your private dashboard at /stats (10 minutes, once)
 
-1. In PostHog: your avatar → Settings → **Personal API keys** → Create key. Scope: **Query Read** only, for this project only. This key is secret: never put it in `js/config.js`, never commit it.
-2. Note the **Project ID** (Settings → Project → General, a number).
-3. In the project folder, create a file called `.env` (it is already ignored by git) with:
-   ```
-   POSTHOG_PERSONAL_KEY=phx_your_secret_key
-   POSTHOG_PROJECT_ID=12345
-   POSTHOG_HOST=https://eu.posthog.com
-   ```
-4. Run `npm run stats` (or `npm run stats -- --days 365`). It writes `logs/stats.json`: visits per day, countries, time zones, languages, devices, referrers, busy hours, visit length, cards per visit, every card's views, time and "deeper" rate, reactions, jumps between titles, filters, and every event count. Only aggregated numbers, no personal data.
-5. Ask Claude "build my dashboard from logs/stats.json". Claude reads the file from your folder; the key never goes through the chat.
+The dashboard lives at **https://tomblackroad.github.io/fearsoflove/stats/** (not linked from the game, hidden from search engines). Every night a GitHub Action asks PostHog for anonymous daily totals, encrypts them with a passphrase only you know, and publishes the encrypted file on a separate branch called `stats-data`. The page downloads it and decrypts it in your browser. Your main branch never gets automatic commits, so `git pull` stays boring.
+
+1. In PostHog: your avatar → Settings → **Personal API keys** → Create key. Scope: **Query Read** only, for this project only. This key is secret: never put it in `js/config.js`, never commit it, never paste it in a chat.
+2. Choose a **passphrase** for the dashboard: four or five random words is good (example shape: `velvet-tram-orbit-lemon`). Keep it in your password manager.
+3. GitHub → the repository → **Settings → Secrets and variables → Actions → New repository secret**. Add three secrets:
+   - `POSTHOG_PERSONAL_KEY`: the `phx_` key from step 1
+   - `POSTHOG_PROJECT_ID`: `334255`
+   - `STATS_PASSPHRASE`: the passphrase from step 2
+4. GitHub → **Actions** tab → "Refresh stats" → **Run workflow**. After about a minute it turns green and a `stats-data` branch appears.
+5. Open `/stats/`, type the passphrase, tick "Remember on this device" on your own phone or laptop.
+
+After that it refreshes by itself every night around 05:00 Paris time. For fresh numbers during the day, press **Run workflow** again.
+
+What you can see: any date range (date 1 to date 2, or 7 / 30 / 90 days / All) with the change against the period just before; visits per day or week; a world map and a list of countries; a Europe map with city dots and top regions; weekday × hour heatmap; cards per visit; the 5-level rating mix; the multiplayer funnel; devices and installed app; features used; referrers; languages; every card with views, time, rating, deeper and skip rates; jumps between titles.
+
+Working locally (optional): put the same three values in `.env` (`POSTHOG_PERSONAL_KEY`, `POSTHOG_PROJECT_ID`, `STATS_PASSPHRASE`, plus `POSTHOG_HOST=https://eu.posthog.com`) and run `npm run stats`. It writes `logs/stats.json` (plain, private, gitignored) and `stats/data.json` (encrypted, gitignored). Then `npm start` and open http://localhost:8080/stats/?local to see the local file instead of the published one.
+
+Safety notes: the encrypted file is public but unreadable without the passphrase (AES-256-GCM, key from PBKDF2-SHA256 with 310,000 rounds). It holds only daily totals: no IP addresses, no visitor ids. City and coordinates come from PostHog's IP lookup, rounded to about 10 km. If you ever change the passphrase, update the secret and run the workflow again; "Remember on this device" will then ask once more.
 
 ## C. Search and link previews (5 minutes)
 

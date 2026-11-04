@@ -4,3 +4,6 @@ node_modules/
 
 # raw usage logs never go in the public repo
 logs/
+
+# encrypted stats are published by the GitHub Action on the stats-data branch
+stats/data.json

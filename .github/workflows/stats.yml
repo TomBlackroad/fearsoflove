@@ -1,0 +1,48 @@
+# Refreshes the private dashboard at /stats every night.
+# It asks PostHog for anonymous daily totals, encrypts them with your passphrase and
+# publishes the encrypted file on a separate branch called "stats-data", so your main
+# branch never gets automatic commits. Setup: docs/ANALYTICS_SETUP.md, part B.
+name: Refresh stats
+
+on:
+  schedule:
+    - cron: '17 4 * * *'   # every day around 05:17 Paris time (GitHub may run it a bit late)
+  workflow_dispatch:        # the "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stats
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Export from PostHog
+        env:
+          POSTHOG_PERSONAL_KEY: ${{ secrets.POSTHOG_PERSONAL_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          POSTHOG_HOST: https://eu.posthog.com
+          STATS_PASSPHRASE: ${{ secrets.STATS_PASSPHRASE }}
+        run: |
+          if [ -z "$STATS_PASSPHRASE" ]; then echo "Add the STATS_PASSPHRASE secret first."; exit 1; fi
+          node tools/posthog-stats.mjs
+          rm -rf logs   # the plain copy never leaves the runner
+      - name: Publish encrypted file on the stats-data branch
+        run: |
+          mkdir -p /tmp/out && cp stats/data.json /tmp/out/data.json
+          cd /tmp/out
+          git init -q -b stats-data
+          git config user.name "fol-stats-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -q -m "Encrypted stats $(date -u +%F)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" stats-data
+          echo "Published $(wc -c < data.json) bytes."

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#14090d">
+  <title>FOL Stats</title>
+  <link rel="icon" href="../icons/favicon-32.png">
+  <link rel="stylesheet" href="stats.css">
+</head>
+<body>
+  <main id="app">
+    <header class="top">
+      <div>
+        <p class="eyebrow">Fears of Love</p>
+        <h1>Stats</h1>
+      </div>
+      <div class="top-right">
+        <p class="small" id="updated"></p>
+        <button type="button" class="ghost" id="lock" hidden>Lock</button>
+      </div>
+    </header>
+
+    <!-- Unlock -->
+    <section id="gate" class="gate">
+      <form id="gate-form" class="card">
+        <h2>Private dashboard</h2>
+        <p class="muted">The numbers are encrypted. Type the passphrase you saved as <code>STATS_PASSPHRASE</code>.</p>
+        <input type="password" id="pass" autocomplete="current-password" placeholder="Passphrase" required>
+        <label class="check"><input type="checkbox" id="remember"> Remember on this device</label>
+        <button type="submit" class="btn" id="unlock">Unlock</button>
+        <p class="small" id="gate-msg" role="status"></p>
+      </form>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dash" hidden>
+      <div class="rangebar" id="rangebar">
+        <div class="seg" id="presets" role="group" aria-label="Quick ranges">
+          <button type="button" data-days="7">7 days</button>
+          <button type="button" data-days="30">30 days</button>
+          <button type="button" data-days="90">90 days</button>
+          <button type="button" data-days="all">All</button>
+        </div>
+        <div class="dates">
+          <label>From <input type="date" id="from"></label>
+          <label>To <input type="date" id="to"></label>
+        </div>
+      </div>
+      <p class="small range-note" id="range-note"></p>
+
+      <div class="kpis" id="kpis"></div>
+
+      <article class="panel wide">
+        <header><h3>Visits</h3><p class="small" id="visits-sub"></p></header>
+        <div class="chart" id="ch-visits"></div>
+      </article>
+
+      <article class="panel wide">
+        <header><h3>Where in the world</h3><p class="small">Visits by country</p></header>
+        <div class="map" id="map-world"></div>
+        <div class="legend-ramp" id="world-legend"></div>
+        <ol class="toplist cols" id="list-countries"></ol>
+      </article>
+
+      <article class="panel wide">
+        <header><h3>Europe up close</h3><p class="small">Dots are cities (approximate, from PostHog's IP lookup)</p></header>
+        <div class="map" id="map-europe"></div>
+        <h4>Top regions in Europe</h4>
+        <ol class="toplist cols" id="list-regions"></ol>
+      </article>
+
+      <div class="grid">
+        <article class="panel">
+          <header><h3>When people play</h3><p class="small">Visits by weekday and hour, Paris time</p></header>
+          <div class="chart" id="ch-hours"></div>
+        </article>
+
+        <article class="panel">
+          <header><h3>How deep a visit goes</h3><p class="small">Cards seen per visit</p></header>
+          <div class="chart" id="ch-depth"></div>
+        </article>
+
+        <article class="panel">
+          <header><h3>How cards feel</h3><p class="small">All ratings in the range</p></header>
+          <div id="ch-ratings"></div>
+        </article>
+
+        <article class="panel">
+          <header><h3>Multiplayer</h3><p class="small">From opening the dialog to sharing a round</p></header>
+          <div class="chart" id="ch-funnel"></div>
+        </article>
+
+        <article class="panel">
+          <header><h3>Devices</h3><p class="small">Visits</p></header>
+          <div class="chart" id="ch-devices"></div>
+        </article>
+
+        <article class="panel">
+          <header><h3>Features used</h3><p class="small">Taps in the range</p></header>
+          <div class="chart" id="ch-features"></div>
+        </article>
+
+        <article class="panel">
+          <header><h3>Came from</h3><p class="small">Referring site</p></header>
+          <ol class="toplist" id="list-referrers"></ol>
+        </article>
+
+        <article class="panel">
+          <header><h3>Languages</h3><p class="small">Browser language</p></header>
+          <ol class="toplist" id="list-langs"></ol>
+        </article>
+      </div>
+
+      <article class="panel wide">
+        <header><h3>Cards</h3><p class="small">Tap a column to sort</p></header>
+        <div class="table-wrap"><table id="tbl-cards"></table></div>
+        <button type="button" class="ghost" id="cards-more" hidden>Show all</button>
+      </article>
+
+      <article class="panel wide">
+        <header><h3>Title jumps</h3><p class="small">Taps on a related title, from → to</p></header>
+        <ol class="toplist" id="list-jumps"></ol>
+      </article>
+
+      <p class="small foot">Anonymous daily totals from PostHog, refreshed every night by a GitHub Action. No visitor ids are stored here.</p>
+    </section>
+  </main>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <script src="stats.js"></script>
+</body>
+</html>
