@@ -52,6 +52,7 @@ Rule of thumb: **anonymous counts first, anonymous journeys second, personal dat
 **Tool: PostHog Cloud, EU region (Frankfurt), cookieless mode.**
 - Free: **1,000,000 events per month**, 1 year of data retention, unlimited team members, dashboards, funnels, retention charts. After that, about $0.00005 per event, which is $50 per extra million. ([PostHog pricing](https://posthog.com/pricing))
 - Cookieless mode (`cookieless_mode: 'always'`) stores nothing in the browser, so no cookie banner is needed. The trade-offs: returning visitors look new each day, there is no session replay, and there is no world map from IP. ([PostHog cookieless guide](https://www.posthog.com/tutorials/cookieless-tracking))
+- Link tags: a link like `?from=family` sends `src: family` with every event of that visit, then the tag is removed from the address bar so it isn't passed on. Room invites shared from the game are tagged `invite-<app>` (`invite-whatsapp`, `invite-copy`…). Make tagged links on `/stats` ("Your links").
 - Already wired: when `posthogKey` is set in `js/config.js`, the app sends the stage-1 events with details, plus `card_seen` (which card, how many seconds it was really on screen, whether "deeper" was opened). Personal profiles are switched off (`person_profiles: 'never'`).
 
 **Setup.**

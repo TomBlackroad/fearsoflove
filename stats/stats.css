@@ -124,3 +124,10 @@ td .sub { display: block; color: var(--faint); font-size: .75rem; }
   border-radius: 10px; padding: 7px 10px; font-size: .8rem; line-height: 1.4; max-width: 240px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
 .tip b { font-weight: 600; }
 .foot { margin-top: 18px; text-align: center; }
+
+/* link maker */
+.linkmaker { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
+.lm-row { display: flex; gap: 8px; }
+.lm-row input { flex: 1; min-width: 0; font: inherit; font-size: .9rem; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.lm-out { word-break: break-all; }
+.lm-out code { user-select: all; }

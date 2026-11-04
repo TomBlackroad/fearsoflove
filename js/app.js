@@ -129,6 +129,26 @@ async function loadJSON(path, optional) {
      (project setting "Discard client IP data"). Time zone and language are sent as a backup.
    - Skipped for people with Do Not Track / Global Privacy Control, and switchable off in About. */
 const phQueue = [];
+
+/* Where a visit came from: links like ?from=family or ?from=insta (letters, digits, - and _).
+   Read once, sent with every event as "src", then removed from the address bar so it is not
+   passed on when someone copies the link. Invites shared from a room are tagged invite-<app>. */
+const SOURCE = (() => {
+  try {
+    const u = new URL(location.href);
+    const raw = u.searchParams.get('from') || u.searchParams.get('utm_source') || '';
+    if (u.searchParams.has('from') || u.searchParams.has('utm_source')) {
+      ['from', 'utm_source', 'utm_medium', 'utm_campaign'].forEach((k) => u.searchParams.delete(k));
+      history.replaceState(null, '', u.pathname + u.search + u.hash);
+    }
+    return raw.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+  } catch (e) { return ''; }
+})();
+function tagLink(url, src) {
+  const i = url.indexOf('#');
+  const base = i > -1 ? url.slice(0, i) : url, hash = i > -1 ? url.slice(i) : '';
+  return base + (base.indexOf('?') > -1 ? '&' : '?') + 'from=' + src + hash;
+}
 function statsAllowed() {
   const cfg = window.FOL_CONFIG || {};
   if (!cfg.posthogKey) return false;
@@ -172,7 +192,7 @@ function setupPostHog() {
           try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
           const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
           ph.register({
-            tz, lang: (navigator.language || '').slice(0, 5),
+            tz, lang: (navigator.language || '').slice(0, 5), src: SOURCE,
             screen: window.innerWidth < 600 ? 'phone' : window.innerWidth < 1024 ? 'tablet' : 'desktop',
             installed: standalone,
           });
@@ -1390,8 +1410,9 @@ function openRemote(invite) {
 
 // Share the room link through the app people already use.
 async function shareRoom(via) {
-  const url = $('#rm-link').value;
-  if (!url) return;
+  const raw = $('#rm-link').value;
+  if (!raw) return;
+  const url = tagLink(raw, 'invite-' + via);
   const text = 'Play Fears of Love with me: same cards, wherever we are. Open this link:';
   const both = text + ' ' + url;
   const status = $('#rm-status');

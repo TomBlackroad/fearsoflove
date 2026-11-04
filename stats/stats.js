@@ -161,6 +161,7 @@
     funnel();
     devices();
     features();
+    sourcesList();
     toplist('#list-referrers', group(pick('referrers', range), (r) => r[1] || 'Direct or app', 2), 8);
     toplist('#list-langs', group(pick('languages', range), (r) => langName(r[1]), 3), 8);
     cardsTable();
@@ -422,10 +423,34 @@
     const el = $(sel);
     const list = entries.filter((e) => e[1] > 0);
     if (!list.length) { el.innerHTML = `<li class="none">${emptyText || 'Nothing in this range.'}</li>`; return; }
-    const max = list[0][1], total = d3.sum(list, (e) => e[1]);
+    const max = d3.max(list, (e) => e[1]), total = d3.sum(list, (e) => e[1]);
     el.innerHTML = list.slice(0, limit).map(([name, v]) => `<li><span class="name" title="${esc(name)}">${esc(name)}</span><span class="num">${fmt(v)} · ${pct(v, total)}</span><span class="bar"><i style="width:${(v / max) * 100}%"></i></span></li>`).join('')
       + (list.length > limit ? `<li class="none">+ ${list.length - limit} more</li>` : '');
   }
+
+  /* tagged links */
+  const prettyTag = (t) => (t.startsWith('invite-') ? `🔗 Room invite · ${t.slice(7)}` : `🏷️ ${t}`);
+  function sourcesList() {
+    const rows = pick('sources', range);
+    const tagged = group(rows.filter((r) => r[1]), (r) => prettyTag(r[1]), 2);
+    const untagged = rows.filter((r) => !r[1]).reduce((a, r) => a + (+r[2] || 0), 0);
+    if (untagged && tagged.length) tagged.push(['Untagged (shared on, typed or bookmarked)', untagged]);
+    toplist('#list-sources', tagged, 10, 'No tagged visits yet. Make a link below and share it.');
+  }
+  function gameUrl() {
+    const path = location.pathname.replace(/stats\/?(index\.html)?$/, '');
+    return location.origin + path;
+  }
+  $('#linkmaker').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const tag = $('#lm-tag').value.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+    const out = $('#lm-out');
+    if (!tag) { out.textContent = 'Type a short name first.'; return; }
+    const url = gameUrl() + '?from=' + tag;
+    let copied = false;
+    try { await navigator.clipboard.writeText(url); copied = true; } catch (err) { /* select it by hand */ }
+    out.innerHTML = `${copied ? 'Copied: ' : 'Your link: '}<code>${esc(url)}</code>`;
+  });
 
   /* cards table */
   function cardsTable() {

@@ -49,6 +49,8 @@ const QUERIES = {
   devices: `SELECT ${DAY} AS d, properties.screen AS s, properties.$os AS os, toString(properties.installed) AS inst, count(DISTINCT ${S}) FROM events WHERE ${PV} GROUP BY d, s, os, inst ORDER BY d LIMIT 50000`,
   // day, referring domain, visits
   referrers: `SELECT ${DAY} AS d, properties.$referring_domain AS r, count(DISTINCT ${S}) FROM events WHERE ${PV} GROUP BY d, r ORDER BY d LIMIT 50000`,
+  // day, link tag (?from=...), visits
+  sources: `SELECT ${DAY} AS d, properties.src AS src, count(DISTINCT ${S}) FROM events WHERE ${PV} GROUP BY d, src ORDER BY d LIMIT 50000`,
   // day, language, time zone, visits
   languages: `SELECT ${DAY} AS d, properties.lang AS l, properties.tz AS tz, count(DISTINCT ${S}) FROM events WHERE ${PV} GROUP BY d, l, tz ORDER BY d LIMIT 50000`,
   // day, hour (Paris), visits

@@ -104,7 +104,20 @@
         </article>
 
         <article class="panel">
-          <header><h3>Came from</h3><p class="small">Referring site</p></header>
+          <header><h3>Your links</h3><p class="small">Visits per tagged link (?from=…)</p></header>
+          <ol class="toplist" id="list-sources"></ol>
+          <form class="linkmaker" id="linkmaker">
+            <label for="lm-tag" class="small">Make a link for a group or post</label>
+            <div class="lm-row">
+              <input id="lm-tag" placeholder="e.g. family, insta, epfl" maxlength="32" autocomplete="off" spellcheck="false">
+              <button type="submit" class="ghost">Copy link</button>
+            </div>
+            <p class="small lm-out" id="lm-out"></p>
+          </form>
+        </article>
+
+        <article class="panel">
+          <header><h3>Came from</h3><p class="small">Referring site (apps like WhatsApp often hide it)</p></header>
           <ol class="toplist" id="list-referrers"></ol>
         </article>
 
