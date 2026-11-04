@@ -39,3 +39,6 @@ A couple ice-breaker. Each card: a famous movie or series moment, then "what wou
 - Rounds of 20 cards with reactions (loved it, made me think, fun, pass). At the end of each round: a live graph (who matched whom, everyone's reactions, top cards), save or share as PNG, and "Next round" once everybody is ready. Names (aliases) are asked when joining a room.
 - Invite button inside rooms (link + share buttons). "Movies" is the term everywhere (not "Film").
 - Analytics: PostHog only (memory persistence, IP discarded after country lookup, DNT/GPC respected, opt-out in About). `npm run stats` exports aggregates to logs/stats.json for a custom dashboard. SEO: preview image, structured data, sitemap. Setup: docs/ANALYTICS_SETUP.md.
+- One device: the whole deck (no rounds); filters in a pop-up behind a filter icon (type, genre, group dares 🌶️ Flirty / 🌶️🌶️ Steamy, off by default, explainer first). 5-level rating 🔥 → 🙈.
+- Play with others: rounds of 20, a graph after each round (players fixed, each card pulled toward the players who liked it, so shared taste gathers in the middle), one small share icon, Continue when everyone is ready; spicy "Would you…?" cards can be switched on; a small "Similar titles" button opens 2 deck + 2 TMDB titles in a new tab.
+- Content: 604 cards (514 conversation cards, 45 group dares, 45 "Would you…?").

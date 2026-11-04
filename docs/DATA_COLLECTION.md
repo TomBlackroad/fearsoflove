@@ -28,7 +28,9 @@ Rule of thumb: **anonymous counts first, anonymous journeys second, personal dat
 | `event/deeper` | Follow-up questions opened |
 | `event/filter-type/…`, `event/filter-genre/…` | Filter choices (shows which genres people want) |
 | `event/room-dialog`, `room-copy`, `room-share`, `room-open`, `room-join` | The long-distance funnel |
-| `event/react/love`, `/deep`, `/fun`, `/pass` | Reactions to cards (the best quality signal you have today) |
+| `react/fire`, `/like`, `/ok`, `/meh`, `/nope` (+ `value` 5…1) | The 5-level card rating: 🔥 Loved it, 😍 Really liked it, 🙂 It's OK, 😕 Not really, 🙈 Not for me |
+| `filters-open`, `filter-type/…`, `filter-genre/…`, `filter-dares/…`, `dares-explained` | Filter pop-up use, and group dares switched on |
+| `suggest-dialog`, `suggest-open/deck`, `suggest-open/tmdb` | Multiplayer suggestions opened, and which kind of title was clicked |
 | `event/round-end`, `round-ready`, `round-save`, `round-share` | End of a round of 20, ready for the next one, round graph saved or shared |
 | `event/room-invite`, `event/room-share/…` | Invite opened inside a room, which app the link was sent with |
 | `event/tutorial` | Tutorial opened |

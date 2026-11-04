@@ -27,7 +27,11 @@ for (const s of scenes) {
   perMovie[s.movie] = (perMovie[s.movie] || 0) + 1;
   if (!s.moment || !s.prompt) errors.push(`scene ${s.id}: needs moment and prompt`);
   if (![1, 2, 3].includes(s.depth)) errors.push(`scene ${s.id}: depth must be 1, 2 or 3`);
-  if (!Array.isArray(s.followUps) || s.followUps.length < 2) errors.push(`scene ${s.id}: needs 2 followUps`);
+  const kind = s.kind || 'talk';
+  if (!['talk', 'dare', 'wouldyou'].includes(kind)) errors.push(`scene ${s.id}: kind must be talk, dare or wouldyou`);
+  if (kind === 'talk' && (!Array.isArray(s.followUps) || s.followUps.length < 2)) errors.push(`scene ${s.id}: needs 2 followUps`);
+  if (kind !== 'talk' && ![1, 2].includes(s.spice)) errors.push(`scene ${s.id}: ${kind} cards need spice 1 (flirty) or 2 (steamy)`);
+  if (kind === 'dare' && !/^Dare: .+\nTruth: .+/s.test(s.prompt || '')) warn.push(`scene ${s.id}: dare prompt should read "Dare: …" then "Truth: …" on a new line`);
   if (s.line && s.line.split(/\s+/).length > 8) warn.push(`scene ${s.id}: quoted line is long; keep quotes to a few words (copyright)`);
   if ((s.moment || '').length > 260) warn.push(`scene ${s.id}: moment is long for a phone screen`);
 }

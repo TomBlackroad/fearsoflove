@@ -33,12 +33,13 @@ const GENRES = [
 const GENRE_KEYS = GENRES.map((g) => g[0]);
 
 const PRESETS = [
-  ['Everything', { types: TYPES, genres: GENRE_KEYS, depths: [1, 2, 3] }],
-  ['Date night', { types: TYPES, genres: ['romance', 'comedy', 'drama', 'music'], depths: [1, 2] }],
-  ['Deep talk', { types: TYPES, genres: GENRE_KEYS, depths: [2, 3] }],
-  ['Light & fun', { types: TYPES, genres: ['comedy', 'animation', 'adventure', 'music', 'fantasy'], depths: [1] }],
-  ['Movie night', { types: ['movie'], genres: GENRE_KEYS, depths: [1, 2, 3] }],
-  ['Book club', { types: ['book'], genres: GENRE_KEYS, depths: [1, 2, 3] }],
+  ['Everything', { types: TYPES, genres: GENRE_KEYS, depths: [1, 2, 3], spice: [] }],
+  ['Date night', { types: TYPES, genres: ['romance', 'comedy', 'drama', 'music'], depths: [1, 2], spice: [] }],
+  ['Deep talk', { types: TYPES, genres: GENRE_KEYS, depths: [2, 3], spice: [] }],
+  ['Light & fun', { types: TYPES, genres: ['comedy', 'animation', 'adventure', 'music', 'fantasy'], depths: [1], spice: [] }],
+  ['Movie night', { types: ['movie'], genres: GENRE_KEYS, depths: [1, 2, 3], spice: [] }],
+  ['Book club', { types: ['book'], genres: GENRE_KEYS, depths: [1, 2, 3], spice: [] }],
+  ['Spicy date', { types: TYPES, genres: ['romance', 'comedy', 'drama', 'music'], depths: [1, 2], spice: [1, 2] }],
 ];
 
 const state = {
@@ -49,6 +50,8 @@ const state = {
   index: 0,
   typeFilter: 'all', // all | movie | tv | book
   genre: 'all',      // all | one of GENRE_KEYS
+  dares: [],         // group dares switched on: [] | [1] | [2] | [1, 2] (1 flirty, 2 steamy)
+  daresOnly: false,
   showDeep: false,
   view: 'card',      // card | summary (end of a round)
   votes: {},         // sceneId -> playerId -> { v: reaction, t: time }
@@ -274,11 +277,17 @@ function genresOf(movie) {
   return GENRES.filter(([, , words]) => words.some((w) => g.has(w))).map(([k]) => k);
 }
 
-// cfg: { types: [...], genres: [...] or null for all, depths: [...] }
+// cfg: { types, genres (null = all), depths (null = all), dares: spice levels of group dares,
+//        spice: spice levels of remote "Would you…?" cards, daresOnly }
+// Card kinds: talk (scene + question + follow-ups), dare (group, same room), wouldyou (spicy question, works remotely).
 function poolFor(cfg) {
   return state.scenes.filter((sc) => {
     const m = state.movies.get(sc.movie);
+    const kind = sc.kind || 'talk';
     if (!cfg.types.includes(m.type)) return false;
+    if (kind === 'dare') return (cfg.dares || []).includes(sc.spice);
+    if (kind === 'wouldyou') return (cfg.spice || []).includes(sc.spice);
+    if (cfg.daresOnly && (cfg.dares || []).length) return false;
     if (cfg.depths && !cfg.depths.includes(sc.depth)) return false;
     if (cfg.genres && cfg.genres.length < GENRE_KEYS.length && !genresOf(m).some((k) => cfg.genres.includes(k))) return false;
     return true;
@@ -286,39 +295,97 @@ function poolFor(cfg) {
 }
 
 function localCfg() {
-  return { types: state.typeFilter === 'all' ? TYPES : [state.typeFilter], genres: state.genre === 'all' ? null : [state.genre], depths: null };
+  return { types: state.typeFilter === 'all' ? TYPES : [state.typeFilter], genres: state.genre === 'all' ? null : [state.genre], depths: null, dares: state.dares.slice(), spice: [], daresOnly: state.daresOnly };
 }
 
 function activeCfg() { return state.room ? state.room.cfg : localCfg(); }
 
-function renderGenreMenu() {
-  const menu = $('#genre-menu');
-  menu.textContent = '';
-  const types = localCfg().types;
+/* ---------- filters pop-up (one device) ---------- */
+
+const fdraft = { type: 'all', genre: 'all', dares: [], only: false };
+
+function renderFilters() {
+  document.querySelectorAll('#f-types button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.type === fdraft.type)));
+  const types = fdraft.type === 'all' ? TYPES : [fdraft.type];
   const counts = {};
   state.movies.forEach((m) => { if (types.includes(m.type)) genresOf(m).forEach((k) => { counts[k] = (counts[k] || 0) + 1; }); });
-  if (state.genre !== 'all' && !counts[state.genre]) state.genre = 'all';
-  const items = [['all', 'All genres']].concat(GENRES.filter(([k]) => counts[k]).map(([k, label]) => [k, label]));
-  items.forEach(([k, label]) => {
+  if (fdraft.genre !== 'all' && !counts[fdraft.genre]) fdraft.genre = 'all';
+  const box = $('#f-genres');
+  box.textContent = '';
+  [['all', 'All genres']].concat(GENRES.filter(([k]) => counts[k])).forEach(([k, label]) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'genre-chip';
     b.textContent = label;
-    b.setAttribute('aria-pressed', String(state.genre === k));
-    b.addEventListener('click', () => {
-      state.genre = k;
-      track('filter-genre/' + k);
-      renderGenreMenu();
-      newGame();
-    });
-    menu.append(b);
+    b.setAttribute('aria-pressed', String(fdraft.genre === k));
+    b.addEventListener('click', () => { fdraft.genre = k; renderFilters(); });
+    box.append(b);
   });
-  const on = menu.querySelector('[aria-pressed=true]');
-  if (on && on.scrollIntoView && menu.scrollWidth > menu.clientWidth) menu.scrollLeft = on.offsetLeft - 16;
+  document.querySelectorAll('#f-dares input').forEach((i) => { i.checked = fdraft.dares.includes(Number(i.value)); });
+  $('#f-only-row').hidden = !fdraft.dares.length;
+  $('#f-only').checked = fdraft.only;
+  const n = poolFor({ types, genres: fdraft.genre === 'all' ? null : [fdraft.genre], depths: null, dares: fdraft.dares, spice: [], daresOnly: fdraft.only }).length;
+  $('#f-count').textContent = n ? n + ' cards' : 'No cards match these filters.';
+  $('#f-done').disabled = !n;
 }
 
-function syncTypeToggle() {
-  document.querySelectorAll('#type-toggle button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.type === state.typeFilter)));
+function syncFilterDot() {
+  $('#filter-dot').hidden = state.typeFilter === 'all' && state.genre === 'all' && !state.dares.length;
+}
+
+function openFilters() {
+  Object.assign(fdraft, { type: state.typeFilter, genre: state.genre, dares: state.dares.slice(), only: state.daresOnly });
+  renderFilters();
+  $('#filters-dlg').showModal();
+  track('filters-open');
+}
+
+function applyFilters() {
+  const changed = fdraft.type !== state.typeFilter || fdraft.genre !== state.genre || fdraft.only !== state.daresOnly
+    || fdraft.dares.join() !== state.dares.join();
+  $('#filters-dlg').close();
+  if (!changed) return;
+  if (fdraft.type !== state.typeFilter) track('filter-type/' + fdraft.type);
+  if (fdraft.genre !== state.genre) track('filter-genre/' + fdraft.genre);
+  if (fdraft.dares.join() !== state.dares.join()) track('filter-dares/' + (fdraft.dares.join('-') || 'off'));
+  state.typeFilter = fdraft.type;
+  state.genre = fdraft.genre;
+  state.dares = fdraft.dares.slice().sort();
+  state.daresOnly = fdraft.only && state.dares.length > 0;
+  syncFilterDot();
+  newGame();
+}
+
+// Switching group dares on from off shows what they are first.
+function askDares() {
+  return new Promise((resolve) => {
+    const dlg = $('#dares-dlg');
+    const done = (ok) => { dlg.close(); resolve(ok); };
+    $('#dares-ok').onclick = () => done(true);
+    $('#dares-cancel').onclick = () => done(false);
+    dlg.oncancel = (e) => { e.preventDefault(); done(false); };
+    dlg.showModal();
+  });
+}
+
+function setupFilters() {
+  $('#btn-filter').addEventListener('click', openFilters);
+  document.querySelectorAll('#f-types button').forEach((b) => b.addEventListener('click', () => { fdraft.type = b.dataset.type; renderFilters(); }));
+  document.querySelectorAll('#f-dares input').forEach((i) => i.addEventListener('change', async () => {
+    const lvl = Number(i.value);
+    if (i.checked && !fdraft.dares.length) {
+      const ok = await askDares();
+      if (!ok) { i.checked = false; return; }
+      track('dares-explained');
+    }
+    fdraft.dares = fdraft.dares.filter((x) => x !== lvl);
+    if (i.checked) fdraft.dares.push(lvl);
+    if (!fdraft.dares.length) fdraft.only = false;
+    renderFilters();
+  }));
+  $('#f-only').addEventListener('change', (e) => { fdraft.only = e.target.checked; renderFilters(); });
+  $('#f-reset').addEventListener('click', () => { Object.assign(fdraft, { type: 'all', genre: 'all', dares: [], only: false }); renderFilters(); });
+  $('#f-done').addEventListener('click', applyFilters);
 }
 
 /* ---------- deck ---------- */
@@ -353,7 +420,7 @@ function newGame() {
   state.view = 'card';
   show('play');
   if (!state.deck.length) {
-    $('#card').hidden = true; $('#related').hidden = true; $('#react').hidden = true; $('#controls').hidden = true;
+    $('#card').hidden = true; $('#related').hidden = true; $('#suggest-row').hidden = true; $('#react').hidden = true; $('#controls').hidden = true;
     $('#progress').textContent = '0 cards';
     return;
   }
@@ -367,10 +434,17 @@ function renderCard() {
   const movie = state.movies.get(scene.movie);
   $('#card').hidden = false;
   $('#controls').hidden = false;
-  const rd = roundOf(state.index), inRound = state.index - roundStart(rd) + 1, size = roundEnd(rd) - roundStart(rd) + 1;
-  $('#progress').textContent = 'Round ' + (rd + 1) + ' · ' + inRound + ' / ' + size;
-  if (state.room) $('#room-summary').textContent = 'Round ' + (rd + 1) + ' · card ' + inRound + ' of ' + size + ' · ' + describeCfg(state.room.cfg);
-  $('#card-meta').textContent = TYPE_LABEL[movie.type] || 'Movie';
+  if (state.room) {
+    const rd = roundOf(state.index), inRound = state.index - roundStart(rd) + 1, size = roundEnd(rd) - roundStart(rd) + 1;
+    $('#room-summary').textContent = 'Round ' + (rd + 1) + ' · card ' + inRound + ' of ' + size + ' · ' + describeCfg(state.room.cfg);
+  }
+  $('#progress').textContent = (state.index + 1) + ' / ' + state.deck.length;
+  const kind = scene.kind || 'talk';
+  const spice = kind === 'talk' ? '' : (scene.spice === 2 ? '🌶️🌶️ ' : '🌶️ ');
+  $('#card-meta').textContent = kind === 'dare' ? spice + 'Group dare · ' + (TYPE_LABEL[movie.type] || 'Movie')
+    : kind === 'wouldyou' ? spice + 'Would you…? · ' + (TYPE_LABEL[movie.type] || 'Movie')
+    : TYPE_LABEL[movie.type] || 'Movie';
+  $('#card').classList.toggle('is-spicy', kind !== 'talk');
   $('#card-title').textContent = movie.title;
   $('#card-sub').textContent = (movie.author ? movie.author + ' · ' : '') + movie.year + ' · ' + movie.genres.join(', ');
   const wiki = $('#card-wiki');
@@ -383,19 +457,35 @@ function renderCard() {
   line.hidden = !scene.line;
   line.textContent = scene.line ? '“' + scene.line + '”' : '';
 
-  $('#prompt').textContent = scene.prompt;
+  const promptEl = $('#prompt');
+  promptEl.textContent = '';
+  if (kind === 'dare') {
+    // "Dare: …" and "Truth: …" as two clearly separate choices
+    scene.prompt.split('\n').forEach((line) => {
+      const m = line.match(/^(Dare|Truth):\s*(.*)$/);
+      const row = document.createElement('span');
+      row.className = 'dare-line';
+      if (m) { const b = document.createElement('b'); b.textContent = m[1]; row.append(b, ' ' + m[2]); } else row.textContent = line;
+      promptEl.append(row);
+    });
+  } else promptEl.textContent = scene.prompt;
   const list = $('#followups');
   list.textContent = '';
-  scene.followUps.forEach((q) => { const li = document.createElement('li'); li.textContent = q; list.append(li); });
-  list.hidden = !state.showDeep;
+  const follow = scene.followUps || [];
+  follow.forEach((q) => { const li = document.createElement('li'); li.textContent = q; list.append(li); });
+  list.hidden = !state.showDeep || !follow.length;
+  $('#btn-deep').hidden = !follow.length;
   $('#btn-deep').setAttribute('aria-expanded', String(state.showDeep));
 
   renderReactions();
-  renderRelated(movie);
+  if (state.room) { $('#related').hidden = true; $('#suggest-row').hidden = false; }
+  else { $('#suggest-row').hidden = true; renderRelated(movie); }
   if (!dwell.scene || dwell.scene.id !== scene.id) cardShown(scene);
   markSeen(scene.id);
   syncHowto();
-  $('#btn-next').textContent = state.index === roundEnd(roundOf(state.index)) ? 'See the round' : 'Next card';
+  $('#btn-next').textContent = state.room
+    ? (state.index === roundEnd(roundOf(state.index)) ? 'See the round' : 'Next card')
+    : (state.index === state.deck.length - 1 ? 'Shuffle again' : 'Next card');
   $('#btn-prev').disabled = state.index === 0;
 }
 
@@ -493,7 +583,8 @@ function jumpToTitle(id) {
 }
 
 function next() {
-  if (state.index >= roundEnd(roundOf(state.index))) { openSummary(); return; }
+  if (state.room) { if (state.index >= roundEnd(roundOf(state.index))) { openSummary(); return; } }
+  else if (state.index >= state.deck.length - 1) { track('deck-end', { cards: state.deck.length }); newGame(); return; }
   goTo(state.index + 1, { dir: 'next' });
 }
 
@@ -502,6 +593,8 @@ function back() {
 }
 
 function reveal() { // toggle the follow-up questions
+  const sc = state.deck[state.index];
+  if (!sc || !(sc.followUps || []).length) return;
   state.showDeep = !state.showDeep;
   $('#followups').hidden = !state.showDeep;
   $('#btn-deep').setAttribute('aria-expanded', String(state.showDeep));
@@ -559,13 +652,17 @@ function setupSwipe() {
 
 /* ---------- rounds, reactions and the round graph ---------- */
 
-const ROUND = 20;
+const ROUND = 20; // rounds only exist when playing with others
+// 5-level liking scale, every step labelled (fully labelled scales give more reliable answers than end-labels only).
 const REACTIONS = [
-  ['love', '❤️', 'Loved it', '#e0607e'],
-  ['deep', '🔥', 'Made me think', '#e0a458'],
-  ['fun', '😂', 'Fun', '#7cc6a4'],
-  ['pass', '🙈', 'Pass', '#8a7f86'],
+  ['fire', '🔥', 'Loved it', 5],
+  ['like', '😍', 'Really liked it', 4],
+  ['ok', '🙂', "It's OK", 3],
+  ['meh', '😕', 'Not really', 2],
+  ['nope', '🙈', 'Not for me', 1],
 ];
+const VALUE = Object.fromEntries(REACTIONS.map((r) => [r[0], r[3]]));
+const RATING_COLOR = { 5: '#ef6a3a', 4: '#e0a458', 3: '#c9b79c', 2: '#8f8590', 1: '#5f5663' };
 const PALETTE = ['#e0a458', '#e0607e', '#7cc6a4', '#8fb3ff', '#c792ea', '#f2c14e', '#5ec2c7', '#ff9a76'];
 
 const roundOf = (idx) => Math.floor(idx / ROUND);
@@ -599,7 +696,7 @@ function noteMember(id, alias) {
   else r.members.set(id, m);
 }
 
-// votes[sceneId][playerId] = { v: reaction or '', t: time }
+// votes[sceneId][playerId] = { v: reaction key or '', t: time }
 function setVote(sceneId, player, v, t) {
   const box = state.votes[sceneId] || (state.votes[sceneId] = {});
   const cur = box[player];
@@ -610,7 +707,7 @@ function setVote(sceneId, player, v, t) {
 
 function voteOf(sceneId, player) {
   const x = state.votes[sceneId] && state.votes[sceneId][player];
-  return x && x.v ? x.v : '';
+  return x && VALUE[x.v] ? x.v : '';
 }
 
 function react(key) {
@@ -618,7 +715,7 @@ function react(key) {
   const v = voteOf(sc.id, clientId) === key ? '' : key; // tap again to undo
   const t = Date.now();
   setVote(sc.id, clientId, v, t);
-  if (v) track('react/' + v, { scene: sc.id });
+  if (v) track('react/' + v, { scene: sc.id, value: VALUE[v] });
   if (state.room) send({ v: 1, k: 'vote', scene: sc.id, val: v, t, from: clientId, alias: myAlias() });
   renderReactions();
 }
@@ -641,10 +738,10 @@ function renderReactions() {
   $('#react').hidden = false;
   const people = roster().filter((p) => !p.pending);
   const done = people.filter((p) => voteOf(sc.id, p.id)).length;
-  $('#react-count').textContent = state.room && people.length > 1 ? done + ' of ' + people.length + ' reacted' : '';
+  $('#react-count').textContent = state.room && people.length > 1 ? done + ' of ' + people.length + ' rated' : '';
 }
 
-/* --- summary screen --- */
+/* --- end of a round (rooms only) --- */
 
 function openSummary(opts = {}) {
   state.view = 'summary';
@@ -665,98 +762,133 @@ function backToCards() {
 function roundData(rd) {
   const scenes = state.deck.slice(roundStart(rd), roundEnd(rd) + 1);
   const people = roster().filter((p) => !p.pending);
-  const counts = {};
-  people.forEach((p) => { counts[p.id] = {}; REACTIONS.forEach(([k]) => { counts[p.id][k] = 0; }); });
-  scenes.forEach((sc) => people.forEach((p) => { const v = voteOf(sc.id, p.id); if (v) counts[p.id][v] += 1; }));
+  const val = (sc, p) => VALUE[voteOf(sc.id, p.id)] || 0;
+  const cards = scenes.map((sc) => ({ sc, title: state.movies.get(sc.movie).title, votes: people.map((p) => val(sc, p)) }))
+    .filter((c) => c.votes.some(Boolean));
   const pairs = [];
   for (let i = 0; i < people.length; i++) for (let j = i + 1; j < people.length; j++) {
-    let both = 0, same = 0;
-    scenes.forEach((sc) => { const a = voteOf(sc.id, people[i].id), b = voteOf(sc.id, people[j].id); if (a && b) { both++; if (a === b) same++; } });
-    pairs.push({ a: i, b: j, both, match: both ? same / both : null });
+    let both = 0, close = 0;
+    cards.forEach((c) => { const a = c.votes[i], b = c.votes[j]; if (a && b) { both++; if (Math.abs(a - b) <= 1) close++; } });
+    pairs.push({ a: i, b: j, both, match: both ? close / both : null });
   }
-  const top = scenes.map((sc) => {
-    const tally = {};
-    people.forEach((p) => { const v = voteOf(sc.id, p.id); if (v) tally[v] = (tally[v] || 0) + 1; });
-    const score = 2 * (tally.love || 0) + 2 * (tally.deep || 0) + (tally.fun || 0) - (tally.pass || 0);
-    return { sc, tally, score };
-  }).filter((x) => x.score > 0).sort((x, y) => y.score - x.score).slice(0, 3);
-  return { scenes, people, counts, pairs, top };
+  return { scenes, people, cards, pairs };
 }
 
-// The round graph as SVG: who matched whom (lines), and each player's reactions (bars).
-function graphSVG(rd, d, width) {
-  const W = Math.round(Math.max(320, Math.min(640, width || 640)));
-  const narrow = W < 520;
-  const netH = d.people.length > 1 ? (narrow ? 290 : 300) : 0, barTop = netH ? 70 + netH : 96, rowH = 40;
-  const legendRows = narrow ? 2 : 1;
-  const H = barTop + d.people.length * rowH + 40 + legendRows * 22;
-  const cx = W / 2, cy = 70 + netH / 2;
-  const n = d.people.length;
-  const pos = d.people.map((p, i) => {
-    if (n === 2) return { x: cx + (i ? 1 : -1) * Math.min(130, W * 0.3), y: cy };
-    const a = -Math.PI / 2 + (2 * Math.PI * i) / n, R = narrow ? (n > 5 ? 112 : 104) : (n > 5 ? 120 : 105);
+/* The round graph. Players are fixed points; each card is pulled toward the players who liked it
+   (a weighted barycentre, as in a Tutte embedding), so cards everyone loved gather in the middle,
+   cards one person loved sit near that person, and cards nobody liked stay small and faint.
+   With two players the vertical position shows how much you liked it together. */
+function layoutGraph(d, W, H) {
+  const n = d.people.length, cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) * (n > 2 ? 0.38 : 0.36);
+  const players = d.people.map((p, i) => {
+    if (n === 1) return { x: cx, y: cy };
+    if (n === 2) return { x: cx + (i ? 1 : -1) * Math.min(W * 0.36, 170), y: cy };
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / n;
     return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
   });
-  const color = (p) => (p.me ? '#f6ede4' : colorFor(p.id));
-  const name = (p) => (p.me ? (myAlias() || 'You') : p.alias);
-  const favorite = (p) => { const c = d.counts[p.id]; const best = REACTIONS.filter(([k]) => c[k]).sort((x, y) => c[y[0]] - c[x[0]])[0]; return best ? best[1] : ''; };
-  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">';
-  s += '<rect width="' + W + '" height="' + H + '" rx="22" fill="#1f1016"/>';
-  s += '<text x="32" y="44" fill="#e0a458" font-size="13" letter-spacing="2.5">FEARS OF LOVE · ROUND ' + (rd + 1) + '</text>';
-  s += '<text x="' + (W - 32) + '" y="44" fill="#b9a79b" font-size="13" text-anchor="end">' + d.scenes.length + ' cards' + (narrow ? '' : ' · ' + n + (n === 1 ? ' player' : ' players')) + '</text>';
-  if (n > 1) {
-    d.pairs.forEach((pr, i) => {
-      const A = pos[pr.a], B = pos[pr.b];
-      const m = pr.match;
-      const w = m === null ? 1.5 : 2 + 12 * m;
-      s += '<line class="g-edge" style="--d:' + (0.15 + i * 0.08) + 's" x1="' + A.x + '" y1="' + A.y + '" x2="' + B.x + '" y2="' + B.y + '" stroke="#e0a458" stroke-opacity="' + (m === null ? 0.3 : 0.35 + 0.55 * m) + '" stroke-width="' + w + '" stroke-linecap="round"' + (m === null ? ' stroke-dasharray="4 6"' : '') + '/>';
-    });
-    d.pairs.forEach((pr) => {
-      if (pr.match === null) return;
-      const A = pos[pr.a], B = pos[pr.b];
-      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
-      const label = Math.round(pr.match * 100) + (narrow ? '%' : '% match');
-      const lw = narrow ? 46 : 88;
-      s += '<g class="g-label"><rect x="' + (mx - lw / 2) + '" y="' + (my - 12) + '" width="' + lw + '" height="24" rx="12" fill="#2a1820" stroke="#4a2d38"/>';
-      s += '<text x="' + mx + '" y="' + (my + 4.5) + '" fill="#f6ede4" font-size="12" font-weight="600" text-anchor="middle">' + label + '</text></g>';
-    });
-    d.people.forEach((p, i) => {
-      const P = pos[i];
-      const initials = esc(name(p).replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?');
-      s += '<g class="g-node" style="--d:' + (i * 0.1) + 's">';
-      s += '<circle cx="' + P.x + '" cy="' + P.y + '" r="31" fill="' + color(p) + '" stroke="#14090d" stroke-width="4"/>';
-      s += '<text x="' + P.x + '" y="' + (P.y + 6) + '" fill="#14090d" font-size="17" font-weight="700" text-anchor="middle">' + initials + '</text>';
-      const fav = favorite(p);
-      if (fav) s += '<text x="' + (P.x + 24) + '" y="' + (P.y - 18) + '" font-size="18" text-anchor="middle">' + fav + '</text>';
-      s += '<text x="' + P.x + '" y="' + (P.y + 52) + '" fill="#f6ede4" font-size="14" font-weight="600" text-anchor="middle">' + esc(name(p)) + '</text>';
-      s += '</g>';
-    });
+  const nodes = d.cards.map((c, k) => {
+    const rated = c.votes.filter(Boolean);
+    const mean = rated.reduce((s, v) => s + v, 0) / rated.length;
+    let x, y;
+    if (n === 1) {
+      const a = -Math.PI / 2 + (2 * Math.PI * k) / Math.max(d.cards.length, 1);
+      const dist = 34 + ((5 - mean) / 4) * (Math.min(W, H) * 0.36);
+      x = cx + dist * Math.cos(a); y = cy + dist * Math.sin(a);
+    } else {
+      let wx = 0, wy = 0, ws = 0;
+      c.votes.forEach((v, i) => { if (!v) return; const w = Math.pow((v - 1) / 4, 1.6) + 0.03; wx += w * players[i].x; wy += w * players[i].y; ws += w; });
+      x = cx + (wx / ws - cx) * 0.74; y = cy + (wy / ws - cy) * 0.74;
+      if (n === 2) y = cy - ((mean - 3) / 2) * (H * 0.3);
+    }
+    const ang = k * 2.39996, off = 3 + (k % 7) * 1.5;
+    return { c, x: x + Math.cos(ang) * off, y: y + Math.sin(ang) * off, mean, r: 5 + mean * 1.5 };
+  });
+  // spread overlapping dots apart, keep clear of players and inside the frame
+  for (let it = 0; it < 80; it++) {
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        let dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy);
+        if (dist < 0.5) { dx = Math.cos(i + j); dy = Math.sin(i + j); dist = 1; }
+        const min = a.r + b.r + 3;
+        if (dist < min) { const push = (min - dist) / 2; dx /= dist; dy /= dist; a.x -= dx * push; a.y -= dy * push; b.x += dx * push; b.y += dy * push; }
+      }
+      players.forEach((p) => {
+        let dx = a.x - p.x, dy = a.y - p.y, dist = Math.hypot(dx, dy) || 0.01;
+        const min = 26 + a.r + 4;
+        if (dist < min) { a.x = p.x + (dx / dist) * min; a.y = p.y + (dy / dist) * min; }
+      });
+      a.x = Math.max(a.r + 4, Math.min(W - a.r - 4, a.x));
+      a.y = Math.max(a.r + 4, Math.min(H - a.r - 4, a.y));
+    }
   }
-  // reaction bars
-  const x0 = narrow ? 104 : 150, x1 = W - (narrow ? 24 : 40), maxN = Math.max(d.scenes.length, 1);
-  s += '<text x="32" y="' + (barTop - 14) + '" fill="#b9a79b" font-size="12" letter-spacing="1.5">REACTIONS THIS ROUND</text>';
+  return { players, nodes };
+}
+
+function graphSVG(rd, d, width, forExport) {
+  const W = Math.round(Math.max(300, Math.min(640, width || 640)));
+  const narrow = W < 460;
+  const top = forExport ? 64 : 8;
+  const GH = Math.round(Math.max(280, Math.min(460, W * 0.78)));
+  const matchLines = d.pairs.filter((p) => p.match !== null);
+  const per = narrow ? 2 : 5;
+  const matchRows = forExport && matchLines.length ? Math.ceil(matchLines.length / 3) : 0;
+  const foot = 16 + Math.ceil(REACTIONS.length / per) * 22 + matchRows * 20;
+  const H = top + GH + foot;
+  const { players, nodes } = layoutGraph(d, W, GH);
+  const name = (p) => (p.me ? (myAlias() || 'You') : p.alias);
+  const pcolor = (p, i) => (p.me ? '#f6ede4' : colorFor(p.id));
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">';
+  if (forExport) {
+    s += '<rect width="' + W + '" height="' + H + '" rx="22" fill="#1f1016"/>';
+    s += '<text x="28" y="40" fill="#e0a458" font-size="13" letter-spacing="2.5">FEARS OF LOVE · ROUND ' + (rd + 1) + '</text>';
+    s += '<text x="' + (W - 28) + '" y="40" fill="#b9a79b" font-size="13" text-anchor="end">' + d.cards.length + ' cards · ' + d.people.length + (d.people.length === 1 ? ' player' : ' players') + '</text>';
+  }
+  s += '<g transform="translate(0,' + top + ')">';
+  // faint ring = "shared taste" zone in the middle
+  if (d.people.length > 1) s += '<circle cx="' + W / 2 + '" cy="' + GH / 2 + '" r="' + Math.min(W, GH) * 0.16 + '" fill="none" stroke="#4a2d38" stroke-dasharray="2 5"/>';
+  // edges: a player to every card they loved or really liked
+  nodes.forEach((nd, k) => nd.c.votes.forEach((v, i) => {
+    if (v < 4) return;
+    const P = players[i];
+    s += '<line class="g-edge" style="--d:' + (0.1 + k * 0.025).toFixed(3) + 's" x1="' + P.x.toFixed(1) + '" y1="' + P.y.toFixed(1) + '" x2="' + nd.x.toFixed(1) + '" y2="' + nd.y.toFixed(1) + '" stroke="' + pcolor(d.people[i], i) + '" stroke-opacity="' + (v === 5 ? 0.55 : 0.28) + '" stroke-width="' + (v === 5 ? 1.8 : 1.1) + '" stroke-linecap="round"/>';
+  }));
+  // cards
+  nodes.forEach((nd, k) => {
+    const col = RATING_COLOR[Math.round(nd.mean)];
+    s += '<circle class="g-card" data-k="' + k + '" style="--d:' + (0.25 + k * 0.03).toFixed(3) + 's" cx="' + nd.x.toFixed(1) + '" cy="' + nd.y.toFixed(1) + '" r="' + nd.r.toFixed(1) + '" fill="' + col + '" fill-opacity="' + (0.45 + nd.mean * 0.11).toFixed(2) + '" stroke="#14090d" stroke-width="1.5"/>';
+  });
+  // players
   d.people.forEach((p, i) => {
-    const y = barTop + i * rowH;
-    s += '<text x="32" y="' + (y + 19) + '" fill="' + (n > 1 ? color(p) : '#f6ede4') + '" font-size="14" font-weight="600">' + esc(name(p).slice(0, narrow ? 9 : 14)) + '</text>';
-    s += '<rect x="' + x0 + '" y="' + (y + 4) + '" width="' + (x1 - x0) + '" height="22" rx="6" fill="#2a1820"/>';
-    let x = x0;
-    REACTIONS.forEach(([k, emoji, , col]) => {
-      const c = d.counts[p.id][k];
-      if (!c) return;
-      const w = ((x1 - x0) * c) / maxN;
-      s += '<rect class="g-bar" style="--d:' + (0.3 + i * 0.1) + 's" x="' + x + '" y="' + (y + 4) + '" width="' + w + '" height="22" fill="' + col + '"/>';
-      if (w > 34) s += '<text x="' + (x + w / 2) + '" y="' + (y + 20) + '" font-size="12" text-anchor="middle" fill="#14090d" font-weight="700">' + emoji + ' ' + c + '</text>';
-      x += w;
-    });
+    const P = players[i];
+    const initials = esc(name(p).replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+    // name under the circle, kept inside the frame
+    const label = name(p).slice(0, 12);
+    const half = label.length * 3.6;
+    const lx = Math.max(half + 4, Math.min(W - half - 4, P.x)), ly = P.y + 40;
+    const anchor = 'middle';
+    s += '<g class="g-node" style="--d:' + (i * 0.08).toFixed(2) + 's">';
+    s += '<circle cx="' + P.x.toFixed(1) + '" cy="' + P.y.toFixed(1) + '" r="22" fill="' + pcolor(p, i) + '" stroke="#14090d" stroke-width="3"/>';
+    s += '<text x="' + P.x.toFixed(1) + '" y="' + (P.y + 5).toFixed(1) + '" fill="#14090d" font-size="14" font-weight="700" text-anchor="middle">' + initials + '</text>';
+    if (d.people.length > 1) s += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#f6ede4" font-size="13" font-weight="600" text-anchor="' + anchor + '">' + esc(name(p).slice(0, 14)) + '</text>';
+    s += '</g>';
   });
-  // legend
-  REACTIONS.forEach(([, emoji, label, col], i) => {
-    const per = narrow ? 2 : 4;
-    const lx = 32 + (i % per) * ((W - 64) / per);
-    const ly = H - 26 - (legendRows - 1 - Math.floor(i / per)) * 22;
-    s += '<rect x="' + lx + '" y="' + (ly - 10) + '" width="10" height="10" rx="2" fill="' + col + '"/>';
-    s += '<text x="' + (lx + 16) + '" y="' + ly + '" fill="#b9a79b" font-size="12">' + emoji + ' ' + label + '</text>';
+  s += '</g>';
+  // legend + taste match
+  let y = top + GH + 20;
+  const items = REACTIONS.map(([, e, , v]) => [e, RATING_COLOR[v]]);
+  const colW = (W - 40) / per;
+  items.forEach(([e, col], i) => {
+    const lx = 20 + (i % per) * colW, ly = y + Math.floor(i / per) * 22;
+    s += '<circle cx="' + (lx + 6) + '" cy="' + (ly - 4) + '" r="5" fill="' + col + '"/><text x="' + (lx + 16) + '" y="' + ly + '" fill="#b9a79b" font-size="12">' + e + ' ' + esc(REACTIONS[i][2]) + '</text>';
   });
+  y += Math.ceil(REACTIONS.length / per) * 22;
+  for (let row = 0; row < matchRows; row++) {
+    const part = matchLines.slice(row * 3, row * 3 + 3).map((p) => esc(name(d.people[p.a])) + '–' + esc(name(d.people[p.b])) + ' ' + Math.round(p.match * 100) + '%').join(' · ');
+    s += '<text x="20" y="' + (y + row * 20) + '" fill="#f6ede4" font-size="12">' + (row ? '' : 'Taste match · ') + part + '</text>';
+  }
   return s + '</svg>';
 }
 
@@ -765,33 +897,40 @@ function renderSummary(fresh) {
   const rd = roundOf(state.index);
   const d = roundData(rd);
   const final = rd >= lastRound();
-  $('#round-eyebrow').textContent = state.room ? 'Long distance · round ' + (rd + 1) : 'Round ' + (rd + 1) + ' of ' + (lastRound() + 1);
-  $('#round-title').textContent = final ? 'That was the last round' : 'Round ' + (rd + 1) + ' done';
-  const anyVotes = d.people.some((p) => REACTIONS.some(([k]) => d.counts[p.id][k]));
-  $('#round-sub').textContent = anyVotes
-    ? (d.people.length > 1 ? 'Here is how your reactions lined up. The % on each line is how often two of you reacted the same way to the same card.' : 'Here is how this round felt for you.')
-    : 'Nobody reacted to the cards yet. Tap ← to go back and react, then come back here.';
+  $('#round-eyebrow').textContent = 'Round ' + (rd + 1) + ' · ' + d.people.length + (d.people.length === 1 ? ' player' : ' players');
+  $('#round-title').textContent = final ? 'Last round done' : 'Round ' + (rd + 1) + ' done';
+  $('#round-sub').textContent = d.cards.length
+    ? (d.people.length > 1 ? 'Each dot is a card. Lines join each player to the cards they loved, so the cards you shared gather in the middle.' : 'Each dot is a card. The closer to you, the more you liked it.')
+    : 'Nobody rated a card this round. Tap ← to go back and rate a few.';
   const wrap = $('#round-graph');
-  wrap.innerHTML = graphSVG(rd, d, wrap.clientWidth || 640);
+  wrap.innerHTML = d.cards.length ? graphSVG(rd, d, wrap.clientWidth || 640, false) : '';
   wrap.classList.toggle('animate', !!fresh && animatedRound !== rd);
   if (fresh) animatedRound = rd;
-  if (!wrap.dataset.resizeHooked) { wrap.dataset.resizeHooked = '1'; let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (state.view === 'summary') renderSummary(); }, 150); }); }
-  $('#graph-note').textContent = d.people.length > 1 ? 'Updates live as people react.' : '';
-
-  const top = $('#top-cards');
-  top.textContent = '';
-  d.top.forEach(({ sc, tally }) => {
-    const m = state.movies.get(sc.movie);
-    const li = document.createElement('li');
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'top-card';
-    btn.innerHTML = '<span class="top-title">' + esc(m.title) + '</span><span class="top-prompt">' + esc(sc.prompt) + '</span><span class="top-tally">' + REACTIONS.filter(([k]) => tally[k]).map(([k, e]) => e + ' ' + tally[k]).join('  ') + '</span>';
-    btn.addEventListener('click', () => { const i = state.deck.indexOf(sc); if (i > -1) { state.view = 'card'; goTo(i); } });
-    li.append(btn);
-    top.append(li);
+  $('#round-share').hidden = !d.cards.length;
+  const pairs = d.pairs.filter((p) => p.match !== null);
+  const nm = (p) => (p.me ? (myAlias() || 'You') : p.alias);
+  $('#round-match').textContent = pairs.length ? 'Taste match: ' + pairs.map((p) => nm(d.people[p.a]) + ' & ' + nm(d.people[p.b]) + ' ' + Math.round(p.match * 100) + '%').join(' · ') : '';
+  $('#round-match').hidden = !pairs.length;
+  // tap or hover a dot to see the card and everyone's rating
+  wrap.querySelectorAll('.g-card').forEach((c) => {
+    const show = () => {
+      const card = d.cards[Number(c.dataset.k)];
+      let tip = wrap.querySelector('.g-tip');
+      if (!tip) { tip = document.createElement('div'); tip.className = 'g-tip'; wrap.append(tip); }
+      tip.textContent = '';
+      const t = document.createElement('strong'); t.textContent = card.title;
+      const v = document.createElement('span');
+      v.textContent = d.people.map((p, i) => (p.me ? (myAlias() || 'You') : p.alias) + ' ' + (REACTIONS.find((r) => r[3] === card.votes[i]) || ['', '·'])[1]).join('  ');
+      tip.append(t, v);
+      const box = wrap.getBoundingClientRect(), cb = c.getBoundingClientRect();
+      tip.style.left = Math.max(0, Math.min(box.width - 220, cb.left - box.left - 100)) + 'px';
+      tip.style.top = Math.max(0, cb.top - box.top - 56) + 'px';
+      tip.hidden = false;
+    };
+    c.addEventListener('pointerenter', show);
+    c.addEventListener('click', show);
+    c.addEventListener('pointerleave', () => { const tip = wrap.querySelector('.g-tip'); if (tip) tip.hidden = true; });
   });
-  $('#top-title').hidden = !d.top.length;
 
   // ready-up
   const r = state.room;
@@ -809,8 +948,8 @@ function renderSummary(fresh) {
   }
   const waiting = people.filter((p) => !ready.has(p.id)).length;
   const btn = $('#round-next');
-  if (r && ready.has(clientId) && waiting) { btn.textContent = 'Waiting for ' + waiting + (waiting === 1 ? ' more…' : ' more…'); btn.disabled = true; }
-  else { btn.textContent = final ? 'Play another deck' : 'Next round'; btn.disabled = false; }
+  if (r && ready.has(clientId) && waiting) { btn.textContent = 'Waiting for ' + waiting + ' more…'; btn.disabled = true; }
+  else { btn.textContent = 'Continue'; btn.disabled = false; }
 }
 
 function nextRound() {
@@ -821,10 +960,10 @@ function nextRound() {
   send({ v: 1, k: 'ready', round: rd, pass: r.pass, from: clientId, alias: myAlias() });
   track('round-ready', { round: rd + 1 });
   checkReady(rd);
-  renderSummary();
+  if (state.view === 'summary') renderSummary();
 }
 
-// Everyone present has tapped "Next round": every player moves on by themselves, so nobody waits for a leader.
+// Everyone present has tapped Continue: every player moves on by themselves, so nobody waits for a leader.
 function checkReady(rd) {
   const r = state.room;
   if (!r || state.view !== 'summary' || roundOf(state.index) !== rd) return;
@@ -846,7 +985,7 @@ function advanceRound(rd) {
 async function graphPNG() {
   const rd = roundOf(state.index);
   const holder = document.createElement('div');
-  holder.innerHTML = graphSVG(rd, roundData(rd), 640); // saved images always use the large layout
+  holder.innerHTML = graphSVG(rd, roundData(rd), 640, true); // saved images always use the large layout
   const svg = holder.firstChild;
   const xml = new XMLSerializer().serializeToString(svg);
   const img = new Image();
@@ -861,14 +1000,15 @@ async function graphPNG() {
   return new Promise((res) => canvas.toBlob(res, 'image/png'));
 }
 
-async function saveGraph(share) {
+// One small button: share the image where the device can, otherwise save it.
+async function shareGraph() {
   const status = $('#round-status');
   try {
     const blob = await graphPNG();
     if (!blob) return;
     const name = 'fears-of-love-round-' + (roundOf(state.index) + 1) + '.png';
     const file = new File([blob], name, { type: 'image/png' });
-    if (share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: 'Fears of Love', text: 'Our round of Fears of Love' });
       track('round-share');
       return;
@@ -878,7 +1018,8 @@ async function saveGraph(share) {
     a.download = name;
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    status.textContent = share ? 'Sharing images is not available here, so the image was saved instead.' : 'Image saved.';
+    status.textContent = 'Image saved.';
+    setTimeout(() => { status.textContent = ''; }, 2500);
     track('round-save');
   } catch (e) {
     if (e && e.name === 'AbortError') return;
@@ -889,8 +1030,62 @@ async function saveGraph(share) {
 function setupRounds() {
   $('#round-next').addEventListener('click', nextRound);
   $('#round-back').addEventListener('click', backToCards);
-  $('#round-save').addEventListener('click', () => saveGraph(false));
-  $('#round-share').addEventListener('click', () => saveGraph(true));
+  $('#round-share').addEventListener('click', shareGraph);
+  let t;
+  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (state.view === 'summary') renderSummary(); }, 150); });
+}
+
+/* --- similar titles pop-up (rooms): 2 from our deck, 2 more from TMDB, opened in a new tab --- */
+
+function tmdbUrl(t) {
+  const p = state.posters[t.id];
+  if (p && p.tmdbId) return 'https://www.themoviedb.org/' + (t.type === 'tv' ? 'tv' : 'movie') + '/' + p.tmdbId;
+  return 'https://www.themoviedb.org/search?query=' + encodeURIComponent(t.title);
+}
+
+async function openSuggest() {
+  const cur = state.movies.get(state.deck[state.index].movie);
+  if (!state.similar && !state.similarTried) { state.similarTried = true; state.similar = await loadJSON('data/similar.json', true); }
+  const ours = Array.from(state.movies.values()).filter((t) => t.id !== cur.id && t.type !== 'book')
+    .map((t) => ({ t, s: similarity(cur, t) })).sort((a, b) => b.s - a.s).slice(0, 2);
+  const known = new Set(ours.map((x) => (state.posters[x.t.id] || {}).tmdbId));
+  Object.values(state.posters).forEach((p) => known.add(p.tmdbId));
+  const pool = state.similar ? Object.values(state.similar.pool).filter((p) => !known.has(p.tmdb)) : [];
+  const theirs = pool.map((p) => ({ p, s: similarity(cur, p) })).sort((a, b) => b.s - a.s).slice(0, 2);
+  const list = $('#sugg-list');
+  list.textContent = '';
+  const item = (title, sub, poster, href, why, from) => {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.className = 'sugg';
+    a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    const box = document.createElement('div');
+    box.className = 'poster';
+    box.style.setProperty('--hue', hueFor(title));
+    const fb = document.createElement('div'); fb.className = 'fallback'; fb.textContent = title; box.append(fb);
+    if (poster) { const img = new Image(); img.alt = ''; img.onload = () => { fb.remove(); box.append(img); }; img.src = POSTER_BASE + poster; }
+    const txt = document.createElement('span'); txt.className = 'sugg-text';
+    const h = document.createElement('strong'); h.textContent = title;
+    const m = document.createElement('span'); m.className = 'sugg-sub'; m.textContent = sub;
+    const w = document.createElement('span'); w.className = 'sugg-why'; w.textContent = why;
+    txt.append(h, m, w);
+    const go = document.createElement('span'); go.className = 'sugg-go'; go.textContent = 'TMDB ↗';
+    a.append(box, txt, go);
+    a.addEventListener('click', () => track('suggest-open/' + from));
+    li.append(a);
+    list.append(li);
+  };
+  const shared = (a, b) => (a.tags || []).filter((x) => (b.tags || []).includes(x)).slice(0, 2).join(', ');
+  ours.forEach(({ t }) => item(t.title, (TYPE_LABEL[t.type] || 'Movie') + ' · ' + t.year + ' · in our deck', (state.posters[t.id] || {}).poster, tmdbUrl(t), shared(cur, t), 'deck'));
+  theirs.forEach(({ p }) => item(p.title, (p.type === 'tv' ? 'Series' : 'Movie') + ' · ' + p.year, p.poster, 'https://www.themoviedb.org/' + p.type + '/' + p.tmdb, shared(cur, p), 'tmdb'));
+  $('#suggest-title').textContent = 'Like ' + cur.title;
+  $('#suggest-dlg').showModal();
+  track('suggest-dialog');
+}
+
+function setupSuggest() {
+  $('#btn-suggest').addEventListener('click', openSuggest);
+  $('#suggest-close').addEventListener('click', () => $('#suggest-dlg').close());
 }
 
 /* --- names --- */
@@ -929,13 +1124,15 @@ function roomFromHash() {
   const g = p.get('g');
   const genres = g ? g.split('.').filter((k) => GENRE_KEYS.includes(k)) : GENRE_KEYS.slice();
   const depths = (p.get('d') || '1.2.3').split('.').map(Number).filter((d) => d >= 1 && d <= 3);
-  return { id, cfg: { types: types.length ? types : TYPES, genres: genres.length ? genres : GENRE_KEYS.slice(), depths: depths.length ? depths : [1, 2, 3] } };
+  const spice = (p.get('s') || '').split('.').map(Number).filter((n) => n === 1 || n === 2);
+  return { id, cfg: { types: types.length ? types : TYPES, genres: genres.length ? genres : GENRE_KEYS.slice(), depths: depths.length ? depths : [1, 2, 3], spice, dares: [] } };
 }
 
 function roomLink(id, cfg) {
   const parts = ['room=' + id, 't=' + cfg.types.join('.')];
   if (cfg.genres.length < GENRE_KEYS.length) parts.push('g=' + cfg.genres.join('.'));
   parts.push('d=' + cfg.depths.join('.'));
+  if ((cfg.spice || []).length) parts.push('s=' + cfg.spice.join('.'));
   return location.origin + location.pathname + '#' + parts.join('&');
 }
 
@@ -943,7 +1140,8 @@ function describeCfg(cfg) {
   const t = cfg.types.length === 3 ? 'Movies, series and books' : cfg.types.map((x) => ({ movie: 'Movies', tv: 'Series', book: 'Books' })[x]).join(' and ');
   const g = cfg.genres.length >= GENRE_KEYS.length ? 'all genres' : cfg.genres.map((k) => GENRES.find((x) => x[0] === k)[1]).join(', ');
   const d = cfg.depths.length === 3 ? 'all depths' : cfg.depths.map((n) => DEPTHS[n - 1][1].toLowerCase()).join(' + ');
-  return t + ' · ' + g + ' · ' + d;
+  const sp = (cfg.spice || []).length ? ' · ' + cfg.spice.map((n) => n === 2 ? '🌶️🌶️' : '🌶️').join(' ') + ' would you' : '';
+  return t + ' · ' + g + ' · ' + d + sp;
 }
 
 function enterRoom(room) {
@@ -951,7 +1149,7 @@ function enterRoom(room) {
   if (state.room) leaveRoom(true);
   state.room = Object.assign(room, { clock: 0, by: '', pass: 0, peers: new Map(), tabs: new Map(), members: new Map(), ready: {}, net: null, bc: null });
   document.body.classList.add('in-room');
-  $('#filters').hidden = true;
+  $('#btn-filter').hidden = true;
   $('#room-summary').hidden = false;
   $('#room-summary').textContent = describeCfg(room.cfg);
   $('#room-pill').hidden = false;
@@ -972,7 +1170,7 @@ function leaveRoom(silent) {
   state.room = null;
   state.votes = {};
   document.body.classList.remove('in-room');
-  $('#filters').hidden = false;
+  $('#btn-filter').hidden = false;
   $('#room-summary').hidden = true;
   $('#room-pill').hidden = true;
   if (!silent) {
@@ -1142,8 +1340,8 @@ function renderRemote() {
     b.className = 'genre-chip';
     b.textContent = name;
     const same = (a, c) => a.length === c.length && a.every((x) => c.includes(x));
-    b.setAttribute('aria-pressed', String(same(p.types, cfg.types) && same(p.genres, cfg.genres) && same(p.depths, cfg.depths)));
-    b.addEventListener('click', () => { draft.cfg = { types: p.types.slice(), genres: p.genres.slice(), depths: p.depths.slice() }; rerender(); });
+    b.setAttribute('aria-pressed', String(same(p.types, cfg.types) && same(p.genres, cfg.genres) && same(p.depths, cfg.depths) && same(p.spice, cfg.spice)));
+    b.addEventListener('click', () => { draft.cfg = { types: p.types.slice(), genres: p.genres.slice(), depths: p.depths.slice(), spice: p.spice.slice(), dares: [] }; rerender(); });
     presets.append(b);
   });
   const types = $('#rm-types'); types.textContent = '';
@@ -1152,10 +1350,13 @@ function renderRemote() {
   GENRES.forEach(([k, label]) => chip(genres, k, label, cfg.genres.includes(k), (on) => { toggle(cfg.genres, k, on); rerender(); }));
   const depth = $('#rm-depth'); depth.textContent = '';
   DEPTHS.forEach(([n, label]) => chip(depth, n, label, cfg.depths.includes(n), (on) => { toggle(cfg.depths, n, on); rerender(); }));
+  const spice = $('#rm-spice'); spice.textContent = '';
+  [[1, '🌶️ Flirty'], [2, '🌶️🌶️ Steamy']].forEach(([n, label]) => chip(spice, n, label, cfg.spice.includes(n), (on) => { toggle(cfg.spice, n, on); rerender(); }));
 
   cfg.types.sort((a, b) => TYPES.indexOf(a) - TYPES.indexOf(b));
   cfg.genres.sort((a, b) => GENRE_KEYS.indexOf(a) - GENRE_KEYS.indexOf(b));
   cfg.depths.sort();
+  cfg.spice.sort();
   const n = cfg.types.length && cfg.genres.length && cfg.depths.length ? poolFor(cfg).length : 0;
   $('#rm-count').textContent = n ? n + ' cards in this deck' : 'No cards match. Tick at least one option in each group.';
   $('#rm-count').classList.toggle('error', !n);
@@ -1171,9 +1372,9 @@ function openRemote(invite) {
   draft.invite = inRoom;
   draft.id = inRoom ? state.room.id : randomId(8);
   draft.cfg = state.room
-    ? { types: state.room.cfg.types.slice(), genres: state.room.cfg.genres.slice(), depths: state.room.cfg.depths.slice() }
-    : { types: localCfg().types.slice(), genres: state.genre === 'all' ? GENRE_KEYS.slice() : [state.genre], depths: [1, 2, 3] };
-  $('#remote-title').textContent = inRoom ? 'Invite more people' : 'Play long distance';
+    ? { types: state.room.cfg.types.slice(), genres: state.room.cfg.genres.slice(), depths: state.room.cfg.depths.slice(), spice: (state.room.cfg.spice || []).slice(), dares: [] }
+    : { types: localCfg().types.slice(), genres: state.genre === 'all' ? GENRE_KEYS.slice() : [state.genre], depths: [1, 2, 3], spice: [], dares: [] };
+  $('#remote-title').textContent = inRoom ? 'Invite more people' : 'Play with others';
   $('#remote-intro').textContent = inRoom
     ? 'Send this link to anyone who should join. They land on the same card as everyone else.'
     : 'Share one link. Everyone who opens it sees the same card, and when anyone changes card, the others follow. Works for two or more people.';
@@ -1251,9 +1452,9 @@ const TUTORIAL = [
   ['Read the scene', 'Each card describes a moment from a movie, a series or a book. Read it out loud to each other.'],
   ['Answer together', 'The question in the dotted box is about you, not the character. Take turns: what would you do? There are no wrong answers.'],
   ['Go deeper', 'Tap the little arrow under the question for follow-up questions when you want to dig further.'],
-  ['Pick what comes next', 'Under the card you get a movie, a series and a book with a similar feel. Tap one to talk about it next, or use Next card. On a phone you can also swipe the card.'],
-  ['Rounds of 20', 'React to each card with a tap (loved it, made me think, fun, pass). Every 20 cards you get a graph of how your reactions matched, which you can save or share.'],
-  ['Far apart?', 'Tap the globe at the top to make a long distance link. Everyone who opens it sees the same card, and the deck moves for everyone. Tap Invite to send the link again.'],
+  ['Rate it, then pick what comes next', 'Rate each card from 🔥 Loved it to 🙈 Not for me. Under the card you get a movie, a series and a book with a similar feel: tap one to talk about it next, use Next card, or swipe.'],
+  ['Filters and dares', 'The filter button at the top picks movies, series or books and a genre. Group dares 🌶️ are there too, off until you switch them on.'],
+  ['Play with others', 'Far apart? Tap Play with others to make a link. Everyone sees the same card, you play in rounds of 20, and each round ends with a graph of your shared taste.'],
 ];
 let tutStep = 0;
 
@@ -1303,6 +1504,8 @@ async function init() {
   setupTutorial();
   setupRemote();
   setupRounds();
+  setupFilters();
+  setupSuggest();
   setupSwipe();
   $('#btn-info').addEventListener('click', () => $('#about').showModal());
   try {
@@ -1324,13 +1527,6 @@ async function init() {
   }
 
   $('#btn-deep').addEventListener('click', reveal);
-  document.querySelectorAll('#type-toggle button').forEach((btn) => btn.addEventListener('click', () => {
-    state.typeFilter = btn.dataset.type;
-    track('filter-type/' + state.typeFilter);
-    syncTypeToggle();
-    renderGenreMenu();
-    newGame();
-  }));
   $('#btn-next').addEventListener('click', next);
   $('#btn-prev').addEventListener('click', back);
   document.addEventListener('keydown', (e) => {
@@ -1342,7 +1538,7 @@ async function init() {
     if (e.key === 'ArrowLeft') back();
     if (e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); reveal(); }
   });
-  renderGenreMenu();
+  syncFilterDot();
   const room = roomFromHash();
   if (room) enterRoom(room); else newGame();
 }

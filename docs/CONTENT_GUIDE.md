@@ -72,3 +72,10 @@ Use these words in `genres`; the menu groups them like this:
 The mapping lives at the top of `js/app.js` (`GENRES`). Mood tags in use: romantic, feel-good, funny, friendship, nostalgic, bittersweet, adventurous, cozy, family, dark, witty, philosophical, heartbreaking, epic, dreamy, slow-burn, thrilling, mind-bending, coming-of-age, rebellious, scary.
 
 Depth on cards: 1 = light, 2 = personal, 3 = deep. The long-distance pop-up filters on it.
+
+## Dares and "Would you…?" cards (one question, no follow-ups)
+
+- `"kind": "dare"`: a group dare for people in the same room. The prompt reads `Dare: …` then, on a new line, `Truth: …`. Shown only when someone switches on Group dares in the filters (after an explainer).
+- `"kind": "wouldyou"`: a spicy question that works at a distance (`Would you …?`). Offered only in Play with others.
+- `"spice": 1` is 🌶️ Flirty (playful: cheek kiss, compliment, slow dance). `"spice": 2` is 🌶️🌶️ Steamy (more intimate, for couples or close friends). Never explicit; there is always a truth to choose instead of the dare.
+- Tie each card to a title and a real scene (`moment`), like the other cards.

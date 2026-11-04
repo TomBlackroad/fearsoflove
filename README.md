@@ -6,8 +6,8 @@ Just open the link above, on your phone or computer. Nothing to install. (The fi
 
 An ice-breaker game for two (or more). Each card shows an iconic moment from a movie, a series or a book and asks one question: **what would you do?**
 
-- 500+ cards, filters by type and genre, and a row of similar titles under each card to choose what comes next.
-- **Long distance**: tap the globe, pick a deck, share the link. Everyone who opens it sees the same card and moves through the deck together (peer to peer, no account needed).
+- 600+ cards: conversation cards, plus optional 🌶️ group dares and spicy "Would you…?" questions. Filters by type and genre, a 5-level rating, and similar titles under each card.
+- **Play with others**: pick a deck and share the link. Everyone sees the same card, you play rounds of 20, and each round ends with a graph of your shared taste (peer to peer, no account needed).
 
 Working title; the name is still open.
 

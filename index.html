@@ -53,21 +53,17 @@
             <button type="button" class="room-leave" id="room-leave">Leave</button>
           </div>
           <div class="head-actions">
-            <button class="icon-btn" id="btn-remote" type="button" aria-label="Play long distance">
+            <button class="mp-btn" id="btn-remote" type="button">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9M12 3c-2.6 2.7-3.9 5.7-3.9 9s1.3 6.3 3.9 9"/></svg>
+              <span>Play with others</span>
+            </button>
+            <button class="icon-btn" id="btn-filter" type="button" aria-label="Filters">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+              <i class="filter-dot" id="filter-dot" hidden></i>
             </button>
             <button class="icon-btn" id="btn-howto" type="button" aria-label="How to play">?</button>
             <button class="icon-btn" id="btn-info" type="button" aria-label="About this game">i</button>
           </div>
-        </div>
-        <div class="filters" id="filters">
-          <div class="seg" id="type-toggle" role="group" aria-label="Show">
-            <button type="button" data-type="all" aria-pressed="true">All</button>
-            <button type="button" data-type="movie" aria-pressed="false">Movies</button>
-            <button type="button" data-type="tv" aria-pressed="false">Series</button>
-            <button type="button" data-type="book" aria-pressed="false">Books</button>
-          </div>
-          <div class="genre-scroll" id="genre-menu" role="group" aria-label="Genre"></div>
         </div>
         <p class="room-summary small" id="room-summary" hidden></p>
       </header>
@@ -103,6 +99,9 @@
         <div class="related-row" id="related-row"></div>
       </section>
 
+      <div class="suggest-row" id="suggest-row" hidden>
+        <button type="button" class="suggest-btn" id="btn-suggest"><span aria-hidden="true">✦</span> Similar titles</button>
+      </div>
       <div class="controls" id="controls" hidden>
         <button class="btn-arrow" id="btn-prev" type="button" aria-label="Previous card">&#8592;</button>
         <button class="btn btn-primary btn-next" id="btn-next" type="button">Next card</button>
@@ -110,22 +109,23 @@
     </section>
 
     <section id="screen-round" class="screen" aria-labelledby="round-title">
-      <p class="round-eyebrow" id="round-eyebrow"></p>
-      <h2 id="round-title"></h2>
+      <div class="round-head">
+        <div>
+          <p class="round-eyebrow" id="round-eyebrow"></p>
+          <h2 id="round-title"></h2>
+        </div>
+        <button class="icon-btn share-icon" id="round-share" type="button" aria-label="Save or share this graph">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+        </button>
+      </div>
       <p class="small" id="round-sub"></p>
       <div class="graph-wrap" id="round-graph"></div>
-      <p class="small graph-note" id="graph-note"></p>
-      <div class="graph-actions">
-        <button type="button" class="btn btn-ghost" id="round-save">Save image</button>
-        <button type="button" class="btn btn-ghost" id="round-share">Share</button>
-      </div>
-      <p class="small" id="round-status" role="status" aria-live="polite"></p>
-      <h3 class="round-h3" id="top-title">Cards that got you talking</h3>
-      <ol class="top-cards" id="top-cards"></ol>
+      <p class="round-match" id="round-match" hidden></p>
+      <p class="small graph-note" id="round-status" role="status" aria-live="polite"></p>
       <div class="ready-row" id="ready-row"></div>
-      <div class="round-controls">
+      <div class="controls round-controls">
         <button class="btn-arrow" id="round-back" type="button" aria-label="Back to the last card">&#8592;</button>
-        <button class="btn btn-primary btn-next" id="round-next" type="button">Next round</button>
+        <button class="btn btn-primary btn-next" id="round-next" type="button">Continue</button>
       </div>
     </section>
 
@@ -149,6 +149,59 @@
     <div class="dialog-actions">
       <button type="button" class="btn btn-ghost" id="tut-back">Back</button>
       <button type="button" class="btn btn-primary" id="tut-next">Next</button>
+    </div>
+  </dialog>
+
+  <dialog id="filters-dlg" aria-labelledby="filters-title">
+    <h2 id="filters-title">Filters</h2>
+    <fieldset>
+      <legend>Content</legend>
+      <div class="seg seg-wide" id="f-types" role="group" aria-label="Content type">
+        <button type="button" data-type="all">All</button>
+        <button type="button" data-type="movie">Movies</button>
+        <button type="button" data-type="tv">Series</button>
+        <button type="button" data-type="book">Books</button>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Genre</legend>
+      <div class="chips" id="f-genres"></div>
+    </fieldset>
+    <fieldset class="dares-box">
+      <legend>Group dares <span aria-hidden="true">🌶️</span></legend>
+      <p class="small">For two or more people in the same room, around one phone. Off unless you switch them on.</p>
+      <div class="chips" id="f-dares">
+        <label class="chip"><input type="checkbox" value="1"><span>🌶️ Flirty</span></label>
+        <label class="chip"><input type="checkbox" value="2"><span>🌶️🌶️ Steamy</span></label>
+      </div>
+      <label class="switch-row" id="f-only-row" hidden><input type="checkbox" id="f-only"> Only dares</label>
+    </fieldset>
+    <p class="small" id="f-count"></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-link" id="f-reset">Reset</button>
+      <button type="button" class="btn btn-primary" id="f-done">Show cards</button>
+    </div>
+  </dialog>
+
+  <dialog id="dares-dlg" aria-labelledby="dares-title">
+    <h2 id="dares-title">Before you switch on dares</h2>
+    <ul class="dares-rules">
+      <li><strong>For a group in one room.</strong> Pass the phone around; each card is a dare or a truth for whoever holds it.</li>
+      <li><strong>Spicy content.</strong> <span aria-hidden="true">🌶️</span> Flirty is playful (a cheek kiss, a compliment). <span aria-hidden="true">🌶️🌶️</span> Steamy is more intimate, best for couples or close friends. Nothing is explicit.</li>
+      <li><strong>Anyone can pass, always.</strong> Choosing the truth instead of the dare is part of the game.</li>
+    </ul>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-link" id="dares-cancel">Not now</button>
+      <button type="button" class="btn btn-primary" id="dares-ok">Switch on</button>
+    </div>
+  </dialog>
+
+  <dialog id="suggest-dlg" aria-labelledby="suggest-title">
+    <h2 id="suggest-title">Similar titles</h2>
+    <p class="small">Opens in a new tab, so you stay in the game.</p>
+    <ul class="sugg-list" id="sugg-list"></ul>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-primary" id="suggest-close">Close</button>
     </div>
   </dialog>
 
@@ -184,6 +237,11 @@
     <fieldset>
       <legend>How deep</legend>
       <div class="chips" id="rm-depth"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Spicy "Would you…?" questions</legend>
+      <p class="small">Questions, not actions, so they work at a distance. Off unless you switch them on.</p>
+      <div class="chips" id="rm-spice"></div>
     </fieldset>
     <p class="small" id="rm-count"></p>
     </div>
