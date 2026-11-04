@@ -190,5 +190,221 @@
   "breaking-bad": {
     "tmdbId": 1396,
     "poster": "/anFx9aTOOYqgS3v7x3R84Kz67ly.jpg"
+  },
+  "get-out": {
+    "tmdbId": 419430,
+    "poster": "/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg"
+  },
+  "the-shining": {
+    "tmdbId": 694,
+    "poster": "/uAR0AWqhQL1hQa69UDEbb2rE5Wx.jpg"
+  },
+  "a-quiet-place": {
+    "tmdbId": 447332,
+    "poster": "/nAU74GmpUk7t5iklEp3bufwDq4n.jpg"
+  },
+  "parasite": {
+    "tmdbId": 496243,
+    "poster": "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg"
+  },
+  "knives-out": {
+    "tmdbId": 546554,
+    "poster": "/pThyQovXQrw2m0s9x82twj48Jq4.jpg"
+  },
+  "pulp-fiction": {
+    "tmdbId": 680,
+    "poster": "/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg"
+  },
+  "the-godfather": {
+    "tmdbId": 238,
+    "poster": "/3bhkrj58Vtu7enYsRolD1fZdja1.jpg"
+  },
+  "silence-of-the-lambs": {
+    "tmdbId": 274,
+    "poster": "/uS9m8OBk1A8eM9I042bx8XXpqAq.jpg"
+  },
+  "up": {
+    "tmdbId": 14160,
+    "poster": "/mFvoEwSfLqbcWwFsDjQebn9bzFe.jpg"
+  },
+  "spirited-away": {
+    "tmdbId": 129,
+    "poster": "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg"
+  },
+  "wall-e": {
+    "tmdbId": 877268,
+    "poster": "/pJfm3EggGLZToce08Obf7HQHXrP.jpg"
+  },
+  "toy-story": {
+    "tmdbId": 862,
+    "poster": "/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg"
+  },
+  "inside-out": {
+    "tmdbId": 150540,
+    "poster": "/2H1TmgdfNtsKlU9jKdeNyYL5y8T.jpg"
+  },
+  "coco": {
+    "tmdbId": 354912,
+    "poster": "/6Ryitt95xrO8KXuqRGm1fUuNwqF.jpg"
+  },
+  "your-name": {
+    "tmdbId": 372058,
+    "poster": "/vfJFJPepRKapMd5G2ro7klIRysq.jpg"
+  },
+  "mamma-mia": {
+    "tmdbId": 11631,
+    "poster": "/xYLiCWmAMHJubx5jNZ7HuXKjAbV.jpg"
+  },
+  "greatest-showman": {
+    "tmdbId": 316029,
+    "poster": "/b9CeobiihCx1uG1tpw8hXmpi7nm.jpg"
+  },
+  "grease": {
+    "tmdbId": 621,
+    "poster": "/2rM7fQKpb7cs1Iq7IBqub9LFDzJ.jpg"
+  },
+  "moulin-rouge": {
+    "tmdbId": 824,
+    "poster": "/2kjM5CUZRIU5yOANUowrbJcRL9L.jpg"
+  },
+  "mad-max-fury-road": {
+    "tmdbId": 76341,
+    "poster": "/ulcAi4dKpAjHwYGS08vNyx9H6I9.jpg"
+  },
+  "raiders-lost-ark": {
+    "tmdbId": 85,
+    "poster": "/ceG9VzoRAVGwivFU403Wc3AHRys.jpg"
+  },
+  "jurassic-park": {
+    "tmdbId": 329,
+    "poster": "/d9mtMGQDLANKieb9PbD3yK7xxzo.jpg"
+  },
+  "arrival": {
+    "tmdbId": 329865,
+    "poster": "/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg"
+  },
+  "inception": {
+    "tmdbId": 27205,
+    "poster": "/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg"
+  },
+  "forrest-gump": {
+    "tmdbId": 13,
+    "poster": "/saHP97rTPS5eLmrLQEcANmKrsFl.jpg"
+  },
+  "shawshank": {
+    "tmdbId": 278,
+    "poster": "/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg"
+  },
+  "good-will-hunting": {
+    "tmdbId": 489,
+    "poster": "/z2FnLKpFi1HPO7BEJxdkv6hpJSU.jpg"
+  },
+  "dead-poets-society": {
+    "tmdbId": 207,
+    "poster": "/erzbMlcNHOdx24AXOcn2ZKA7R1q.jpg"
+  },
+  "little-miss-sunshine": {
+    "tmdbId": 773,
+    "poster": "/niNdhTpPHSgw22tK0PLjQMV640v.jpg"
+  },
+  "cinema-paradiso": {
+    "tmdbId": 11216,
+    "poster": "/aRgPnx4aPS96f7CnhJH7IG5dN1A.jpg"
+  },
+  "pans-labyrinth": {
+    "tmdbId": 1417,
+    "poster": "/khBQ6nN5FLfg9XgPXIZDkABJjqo.jpg"
+  },
+  "in-the-mood-for-love": {
+    "tmdbId": 843,
+    "poster": "/8BgGbbWiLNhPtkMkN0gGTnbtvBv.jpg"
+  },
+  "the-intouchables": {
+    "tmdbId": 77338,
+    "poster": "/1QU7HKgsQbGpzsJbJK4pAVQV9F5.jpg"
+  },
+  "portrait-lady-on-fire": {
+    "tmdbId": 531428,
+    "poster": "/2LquGwEhbg3soxSCs9VNyh5VJd9.jpg"
+  },
+  "groundhog-day": {
+    "tmdbId": 137,
+    "poster": "/gCgt1WARPZaXnq523ySQEUKinCs.jpg"
+  },
+  "ten-things": {
+    "tmdbId": 4951,
+    "poster": "/ujERk3aKABXU3NDXOAxEQYTHe9A.jpg"
+  },
+  "grand-budapest-hotel": {
+    "tmdbId": 120467,
+    "poster": "/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg"
+  },
+  "devil-wears-prada": {
+    "tmdbId": 350,
+    "poster": "/8912AsVuS7Sj915apArUFbv6F9L.jpg"
+  },
+  "squid-game": {
+    "tmdbId": 93405,
+    "poster": "/1QdXdRYfktUSONkl1oD5gc6Be0s.jpg"
+  },
+  "money-heist": {
+    "tmdbId": 71446,
+    "poster": "/reEMJA1uzscCbkpeRJeTT2bjqUp.jpg"
+  },
+  "dark": {
+    "tmdbId": 70523,
+    "poster": "/wiiyc3m6HKaQhFBYeuM7ySCNQsG.jpg"
+  },
+  "crash-landing-on-you": {
+    "tmdbId": 94796,
+    "poster": "/fgBNLPr6mC8pxuR79ENAJY4nBmj.jpg"
+  },
+  "the-crown": {
+    "tmdbId": 65494,
+    "poster": "/1M876KPjulVwppEpldhdc8V4o68.jpg"
+  },
+  "succession": {
+    "tmdbId": 76331,
+    "poster": "/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg"
+  },
+  "the-bear": {
+    "tmdbId": 136315,
+    "poster": "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg"
+  },
+  "sherlock": {
+    "tmdbId": 19885,
+    "poster": "/7WTsnHkbA0FaG6R9twfFde0I9hl.jpg"
+  },
+  "modern-family": {
+    "tmdbId": 1421,
+    "poster": "/k5Qg5rgPoKdh3yTJJrLtyoyYGwC.jpg"
+  },
+  "brooklyn-nine-nine": {
+    "tmdbId": 48891,
+    "poster": "/mpjlDzVjp7oyHUe2LaF9ltKe6f1.jpg"
+  },
+  "the-good-place": {
+    "tmdbId": 66573,
+    "poster": "/qIhsuhoIYR5yTnDta0IL4senbeN.jpg"
+  },
+  "the-last-of-us": {
+    "tmdbId": 100088,
+    "poster": "/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg"
+  },
+  "downton-abbey": {
+    "tmdbId": 33907,
+    "poster": "/cf9vkwFmwvdzBlcpAYEVQfsKoTp.jpg"
+  },
+  "sex-education": {
+    "tmdbId": 81356,
+    "poster": "/bc3bmTdnoKcRuO9xdQKgAbB7Y9Z.jpg"
+  },
+  "wednesday": {
+    "tmdbId": 119051,
+    "poster": "/9PFonBhy4cQy7Jz20NpMygczOkv.jpg"
+  },
+  "avatar-last-airbender": {
+    "tmdbId": 246,
+    "poster": "/yaGt4GIutpbXHsv48tWceWg6s56.jpg"
   }
 }

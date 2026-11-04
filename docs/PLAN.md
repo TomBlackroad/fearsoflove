@@ -29,3 +29,10 @@ A couple ice-breaker. Each card: a famous film or series moment, then "what woul
 ## Recommender and data (added)
 - Two sliders (gold, silver) + shared mood slider; Suggest shows 3 from the deck and 2 outside, each with where-to-watch by country.
 - Card order: new random shuffle each time, unseen cards first (per device).
+
+## November 2026 update
+- Removed the rating sliders and the Suggest pop-up. Under each card: one film, one series and one book with a similar feel (or three of the filtered type); tapping one jumps to its card.
+- Genre menu under the type toggle; bigger Next button; swipe left or right on phones and tablets (buttons stay).
+- Long-distance rooms: globe button, presets and checklists, a link to copy, share or open. Same seeded deck for everyone; card changes sync peer to peer (Trystero over Nostr relays, plus BroadcastChannel between tabs).
+- 514 cards, 148 titles (new: horror, crime, animation, musicals, international, K-drama, romantasy and more).
+- Analytics switches in js/config.js (GoatCounter, optional cookieless PostHog). Plan: docs/DATA_COLLECTION.md. Ideas: docs/IDEAS.md.

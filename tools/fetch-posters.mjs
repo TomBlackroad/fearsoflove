@@ -33,6 +33,7 @@ let posters = {};
 try { posters = JSON.parse(await readFile('data/posters.json', 'utf8')); } catch { /* first run */ }
 
 for (const m of movies) {
+  if (m.type === 'book') continue; // books get a drawn cover, no poster
   if (posters[m.id] && !force) continue;
   try {
     const kind = m.type === 'tv' ? 'tv' : 'movie';

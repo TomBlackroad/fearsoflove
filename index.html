@@ -24,17 +24,31 @@
 
     <section id="screen-play" class="screen is-active" aria-label="Game">
       <header class="play-head">
-        <span id="progress" class="muted">Loading...</span>
-        <div class="seg" id="type-toggle" role="group" aria-label="Show">
-          <button type="button" data-type="all" aria-pressed="true">All</button>
-          <button type="button" data-type="movie" aria-pressed="false">Movies</button>
-          <button type="button" data-type="tv" aria-pressed="false">Series</button>
-          <button type="button" data-type="book" aria-pressed="false">Books</button>
+        <div class="head-row">
+          <span id="progress" class="muted">Loading...</span>
+          <div class="room-pill" id="room-pill" hidden>
+            <span class="room-dot" aria-hidden="true"></span>
+            <span id="room-label">Long distance</span>
+            <button type="button" class="room-leave" id="room-leave">Leave</button>
+          </div>
+          <div class="head-actions">
+            <button class="icon-btn" id="btn-remote" type="button" aria-label="Play long distance">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9M12 3c-2.6 2.7-3.9 5.7-3.9 9s1.3 6.3 3.9 9"/></svg>
+            </button>
+            <button class="icon-btn" id="btn-howto" type="button" aria-label="How to play">?</button>
+            <button class="icon-btn" id="btn-info" type="button" aria-label="About this game">i</button>
+          </div>
         </div>
-        <div class="head-actions">
-          <button class="icon-btn" id="btn-howto" type="button" aria-label="How to play">?</button>
-          <button class="icon-btn" id="btn-info" type="button" aria-label="About this game">i</button>
+        <div class="filters" id="filters">
+          <div class="seg" id="type-toggle" role="group" aria-label="Show">
+            <button type="button" data-type="all" aria-pressed="true">All</button>
+            <button type="button" data-type="movie" aria-pressed="false">Movies</button>
+            <button type="button" data-type="tv" aria-pressed="false">Series</button>
+            <button type="button" data-type="book" aria-pressed="false">Books</button>
+          </div>
+          <div class="genre-scroll" id="genre-menu" role="group" aria-label="Genre"></div>
         </div>
+        <p class="room-summary small" id="room-summary" hidden></p>
       </header>
       <p id="load-error" class="error" role="alert" hidden></p>
       <article class="card" id="card" aria-live="polite" hidden>
@@ -59,37 +73,14 @@
           </button>
         </div>
       </article>
-      <section class="feedback" id="feedback" aria-label="Your take on this title" hidden>
-        <div class="fb-head">
-          <p class="fb-title">Did you like <strong id="fb-title"></strong>?</p>
-          <div class="seg seg-sm" id="mode-toggle" role="group" aria-label="Number of players">
-            <button type="button" data-mode="2" aria-pressed="true">Together</button>
-            <button type="button" data-mode="1" aria-pressed="false">Solo</button>
-          </div>
-        </div>
-        <div class="fb-pair">
-          <div class="chan chan-a">
-            <div class="chan-top"><label for="fb-like-a"><i class="dot dot-a"></i><span id="lab-a">Player one</span></label><output class="lcd" id="out-a">–</output></div>
-            <div class="fader"><input type="range" id="fb-like-a" min="1" max="10" step="1" value="5"></div>
-            <div class="fader-ends"><span>Not for me</span><span>Loved it</span></div>
-          </div>
-          <div class="chan chan-b">
-            <div class="chan-top"><label for="fb-like-b"><i class="dot dot-b"></i>Player two</label><output class="lcd" id="out-b">–</output></div>
-            <div class="fader"><input type="range" id="fb-like-b" min="1" max="10" step="1" value="5"></div>
-            <div class="fader-ends"><span>Not for me</span><span>Loved it</span></div>
-          </div>
-        </div>
-        <div class="chan chan-want">
-          <label for="fb-want">In the mood for something like this?</label>
-          <div class="fader fader-3"><input type="range" id="fb-want" min="1" max="3" step="1" value="2"></div>
-          <div class="notches" id="want-notches"><span>Not really</span><span>Maybe</span><span>Let's see what you've got</span></div>
-        </div>
+      <section class="related" id="related" aria-labelledby="related-title" hidden>
+        <h4 id="related-title">Jump to something similar</h4>
+        <div class="related-row" id="related-row"></div>
       </section>
 
       <div class="controls" id="controls" hidden>
         <button class="btn-arrow" id="btn-prev" type="button" aria-label="Previous card">&#8592;</button>
-        <button class="btn btn-outline" id="btn-suggest" type="button">Suggest</button>
-        <button class="btn btn-primary" id="btn-next" type="button">Next card</button>
+        <button class="btn btn-primary btn-next" id="btn-next" type="button">Next card</button>
       </div>
     </section>
 
@@ -105,7 +96,7 @@
 
   <dialog id="about">
     <h2>About</h2>
-    <p><strong>Fears of Love</strong> is a free ice-breaker game for two, built around moments from films, series and books.</p>
+    <p><strong>Fears of Love</strong> is a free ice-breaker game for two (or more), built around moments from films, series and books.</p>
     <p>Developed by <a href="https://github.com/TomBlackroad" target="_blank" rel="noopener noreferrer">TomBlackroad</a>. It is open source:
       <a href="https://github.com/TomBlackroad/fearsoflove" target="_blank" rel="noopener noreferrer">see the code</a> or suggest a scene.</p>
     <p class="small">Scene descriptions are written in our own words; titles and artwork belong to their owners. Posters are served by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
@@ -125,15 +116,34 @@
     </div>
   </dialog>
 
-  <dialog id="suggest" aria-labelledby="suggest-title">
-    <h2 id="suggest-title">Try these next</h2>
-    <p class="small" id="suggest-why"></p>
-    <ul class="recs" id="recs"></ul>
-    <h3 class="recs-head" id="recs-out-head">Beyond our deck</h3>
-    <ul class="recs" id="recs-out"></ul>
-    <p class="small" id="suggest-foot">Tap a cover to open its page. Based on your sliders and what you rated on this device.</p>
+  <dialog id="remote" aria-labelledby="remote-title">
+    <h2 id="remote-title">Play long distance</h2>
+    <p class="small">Share one link. Everyone who opens it sees the same card, and when anyone changes card, the others follow. Works for two or more people.</p>
+    <div class="presets" id="presets" role="group" aria-label="Presets"></div>
+    <fieldset>
+      <legend>Content</legend>
+      <div class="chips" id="rm-types"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Genres <button type="button" class="linklike" id="rm-genres-all">all</button> · <button type="button" class="linklike" id="rm-genres-none">none</button></legend>
+      <div class="chips" id="rm-genres"></div>
+    </fieldset>
+    <fieldset>
+      <legend>How deep</legend>
+      <div class="chips" id="rm-depth"></div>
+    </fieldset>
+    <p class="small" id="rm-count"></p>
+    <div class="link-box">
+      <input type="text" id="rm-link" readonly aria-label="Room link">
+      <div class="link-actions">
+        <button type="button" class="btn btn-ghost" id="rm-copy">Copy link</button>
+        <button type="button" class="btn btn-ghost" id="rm-share" hidden>Share</button>
+        <button type="button" class="btn btn-primary" id="rm-open">Open</button>
+      </div>
+      <p class="small" id="rm-status" role="status" aria-live="polite"></p>
+    </div>
     <div class="dialog-actions">
-      <button type="button" class="btn btn-primary" id="suggest-close">Close</button>
+      <button type="button" class="btn btn-link" id="rm-close">Close</button>
     </div>
   </dialog>
 

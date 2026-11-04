@@ -4,7 +4,10 @@
 
 Just open the link above, on your phone or computer. Nothing to install. (The files below are only for people who want to look under the hood or help build it.)
 
-An ice-breaker game for two. Each card shows an iconic moment from a film or series and asks one question: **what would you do?**
+An ice-breaker game for two (or more). Each card shows an iconic moment from a film, a series or a book and asks one question: **what would you do?**
+
+- 500+ cards, filters by type and genre, and a row of similar titles under each card to choose what comes next.
+- **Long distance**: tap the globe, pick a deck, share the link. Everyone who opens it sees the same card and moves through the deck together (peer to peer, no account needed).
 
 Working title; the name is still open.
 
@@ -27,8 +30,8 @@ The game is plain HTML, CSS and JavaScript (no build step), so GitHub Pages serv
 | `data/posters.json` | Poster paths from TMDB (generated, see `docs/POSTERS.md`) |
 | `data/legacy-scenarios.json` | The 35 cards of the original version, kept for reference |
 | `tools/` | Poster fetcher and content validator |
-| `docs/` | Plan, content guide, poster and visit-counter instructions |
-| `js/config.js` | Public settings (visit counter code) |
+| `docs/` | Plan, content guide, posters, visit counter, data-collection plan (`DATA_COLLECTION.md`), feature ideas (`IDEAS.md`) |
+| `js/config.js` | Public settings (GoatCounter code, optional PostHog key) |
 | `icons/`, `manifest.webmanifest` | App icon and home-screen setup |
 
 ## Credits

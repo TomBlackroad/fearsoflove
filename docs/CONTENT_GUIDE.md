@@ -48,3 +48,27 @@ Send me (Claude) a list of titles or favorite moments in any shape, even just na
 - Same rules: write about people, name the characters, keep a human reference, short quotes only.
 - Suggestions mix books, films and series through shared genres and mood tags, so reuse the existing tags.
 - Books link to Open Library ("Find it") instead of streaming services.
+
+## Genres (what the genre menu understands)
+
+Use these words in `genres`; the menu groups them like this:
+
+| Menu | Genre words |
+|---|---|
+| Romance | Romance, Rom-com, Romantasy |
+| Comedy | Comedy, Rom-com, Sitcom |
+| Drama | Drama, Literary |
+| Sci-fi | Sci-fi, Dystopian |
+| Fantasy | Fantasy, Romantasy |
+| Thriller & crime | Thriller, Crime, Mystery |
+| Horror | Horror, Gothic |
+| Action & adventure | Adventure, Action, War, Western |
+| Animation | Animation, Anime |
+| Period & history | Period, Historical, Biography |
+| Musicals | Musical, Music |
+| Classics | Classic |
+| Teen & YA | Young adult, Teen, Coming-of-age |
+
+The mapping lives at the top of `js/app.js` (`GENRES`). Mood tags in use: romantic, feel-good, funny, friendship, nostalgic, bittersweet, adventurous, cozy, family, dark, witty, philosophical, heartbreaking, epic, dreamy, slow-burn, thrilling, mind-bending, coming-of-age, rebellious, scary.
+
+Depth on cards: 1 = light, 2 = personal, 3 = deep. The long-distance pop-up filters on it.
